@@ -85,6 +85,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -313,6 +314,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -404,6 +406,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -458,6 +461,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -522,6 +526,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -602,6 +607,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -647,6 +653,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -683,6 +690,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -795,6 +803,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -844,6 +853,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -1205,6 +1215,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -1288,6 +1299,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -1362,6 +1374,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -1712,7 +1725,7 @@ op {
     }
   }
   summary: "Computes a 2-D convolution given 4-D `input` and `filter` tensors."
-  description: "Given an input tensor of shape `[batch, in_height, in_width, in_channels]`\nand a filter / kernel tensor of shape\n`[filter_height, filter_width, in_channels, out_channels]`, this op\nperforms the following:\n\n1. Flattens the filter to a 2-D matrix with shape\n   `[filter_height * filter_width * in_channels, output_channels]`.\n2. Extracts image patches from the the input tensor to form a *virtual*\n   tensor of shape `[batch, out_height, out_width,\n   filter_height * filter_width * in_channels]`.\n3. For each patch, right-multiplies the filter matrix and the image patch\n   vector.\n\nIn detail,\n\n    output[b, i, j, k] =\n        sum_{di, dj, q} input[b, strides[1] * i + di, strides[2] * j + dj, q] *\n                        filter[di, dj, q, k]\n\nMust have `strides[0] = strides[3] = 1`.  For the most common case of the same\nhorizontal and vertices strides, `strides = [1, stride, stride, 1]`."
+  description: "Given an input tensor of shape `[batch, in_height, in_width, in_channels]`\nand a filter / kernel tensor of shape\n`[filter_height, filter_width, in_channels, out_channels]`, this op\nperforms the following:\n\n1. Flattens the filter to a 2-D matrix with shape\n   `[filter_height * filter_width * in_channels, output_channels]`.\n2. Extracts image patches from the input tensor to form a *virtual*\n   tensor of shape `[batch, out_height, out_width,\n   filter_height * filter_width * in_channels]`.\n3. For each patch, right-multiplies the filter matrix and the image patch\n   vector.\n\nIn detail,\n\n    output[b, i, j, k] =\n        sum_{di, dj, q} input[b, strides[1] * i + di, strides[2] * j + dj, q] *\n                        filter[di, dj, q, k]\n\nMust have `strides[0] = strides[3] = 1`.  For the most common case of the same\nhorizontal and vertices strides, `strides = [1, stride, stride, 1]`."
 }
 op {
   name: "Conv2DBackpropFilter"
@@ -3033,6 +3046,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -3064,6 +3078,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -3154,6 +3169,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -3488,6 +3504,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -3695,6 +3712,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -3726,6 +3744,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -4237,6 +4256,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -4518,6 +4538,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -4618,6 +4639,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -4782,7 +4804,7 @@ op {
   attr {
     name: "num_negative_samples"
     type: "int"
-    description: "Number of negative samples per exaple."
+    description: "Number of negative samples per example."
   }
   summary: "Training via negative sampling."
 }
@@ -5029,7 +5051,7 @@ op {
   attr {
     name: "dense_shapes"
     type: "list(shape)"
-    description: "A list of Ndense shapes; the shapes of data in each Feature\ngiven in dense_keys.\nThe number of elements in the Feature corresponding to dense_key[j]\nmust always equal dense_shapes[j].NumEntries().\nIf dense_shapes[j] == (D0, D1, ..., DN) then the the shape of output\nTensor dense_values[j] will be (|serialized|, D0, D1, ..., DN):\nThe dense outputs are just the inputs row-stacked by batch."
+    description: "A list of Ndense shapes; the shapes of data in each Feature\ngiven in dense_keys.\nThe number of elements in the Feature corresponding to dense_key[j]\nmust always equal dense_shapes[j].NumEntries().\nIf dense_shapes[j] == (D0, D1, ..., DN) then the shape of output\nTensor dense_values[j] will be (|serialized|, D0, D1, ..., DN):\nThe dense outputs are just the inputs row-stacked by batch."
     has_minimum: true
   }
   summary: "Transforms a vector of brain.Example protos (as strings) into typed tensors."
@@ -5379,6 +5401,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -6316,6 +6339,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -6343,6 +6367,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -6377,6 +6402,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -6411,6 +6437,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -6908,6 +6935,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -6948,6 +6976,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -7012,6 +7041,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -7119,6 +7149,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7163,6 +7194,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7207,6 +7239,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7251,6 +7284,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7295,6 +7329,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7784,6 +7819,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7818,6 +7854,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7845,6 +7882,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7879,6 +7917,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -7929,6 +7968,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -8009,6 +8049,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -8351,6 +8392,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -8782,6 +8824,7 @@ op {
         type: DT_INT64
         type: DT_INT32
         type: DT_UINT8
+        type: DT_UINT16
         type: DT_INT16
         type: DT_INT8
         type: DT_COMPLEX64
@@ -8852,7 +8895,7 @@ op {
   attr {
     name: "f"
     type: "func"
-    description: "The function we want to compute the gradient for.\n\nThe function \'f\' must be a numerical function which takes N inputs and\nproduces M outputs. Its gradient function \'g\', which is computed by\nthis SymbolicGradient op is a function taking N + M inputs and\nproduces N outputs.\n\nI.e. if we have\n   (y1, y2, ..., y_M) = f(x1, x2, ..., x_N),\nthen, g is\n   (dL/dx1, dL/dx2, ..., dL/dx_N) = g(x1, x2, ..., x_N,\n                                     dL/dy1, dL/dy2, ..., dL/dy_M),\n\nwhere L is a scalar-value function of (x1, x2, ..., xN) (e.g., the\nloss function). dL/dx_i is the the partial derivative of L with respect\nto x_i.\n\n(Needs some math expert to say the comment above better.)"
+    description: "The function we want to compute the gradient for.\n\nThe function \'f\' must be a numerical function which takes N inputs and\nproduces M outputs. Its gradient function \'g\', which is computed by\nthis SymbolicGradient op is a function taking N + M inputs and\nproduces N outputs.\n\nI.e. if we have\n   (y1, y2, ..., y_M) = f(x1, x2, ..., x_N),\nthen, g is\n   (dL/dx1, dL/dx2, ..., dL/dx_N) = g(x1, x2, ..., x_N,\n                                     dL/dy1, dL/dy2, ..., dL/dy_M),\n\nwhere L is a scalar-value function of (x1, x2, ..., xN) (e.g., the\nloss function). dL/dx_i is the partial derivative of L with respect\nto x_i.\n\n(Needs some math expert to say the comment above better.)"
   }
   summary: "Computes the gradient function for function f via backpropagation."
 }
@@ -9323,6 +9366,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -9371,6 +9415,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
@@ -9628,6 +9673,7 @@ op {
         type: DT_UINT8
         type: DT_INT16
         type: DT_INT8
+        type: DT_UINT16
       }
     }
   }
