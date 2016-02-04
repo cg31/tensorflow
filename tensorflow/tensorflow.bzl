@@ -3,7 +3,7 @@
 # Return the options to use for a C++ library or binary build.
 # Uses the ":optmode" config_setting to pick the options.
 
-load("/tensorflow/core/platform/default/build_config_root",
+load("//tensorflow/core:platform/default/build_config_root.bzl",
      "tf_cuda_tests_tags")
 
 # List of proto files for android builds
@@ -288,6 +288,28 @@ _py_wrap_cc = rule(attrs={
                        "py_out": "%{py_module_name}.py",
                    },
                    implementation=_py_wrap_cc_impl,)
+
+
+# Bazel rule for collecting the header files that a target depends on.
+def _transitive_hdrs_impl(ctx):
+  outputs = set()
+  for dep in ctx.attr.deps:
+    outputs += dep.cc.transitive_headers
+  return struct(files=outputs)
+
+
+_transitive_hdrs = rule(attrs={
+    "deps": attr.label_list(allow_files=True,
+                            providers=["cc"]),
+},
+                        implementation=_transitive_hdrs_impl,)
+
+
+def transitive_hdrs(name, deps=[], **kwargs):
+  _transitive_hdrs(name=name + "_gather",
+                   deps=deps)
+  native.filegroup(name=name,
+                   srcs=[":" + name + "_gather"])
 
 def tf_extension_linkopts():
   return []  # No extension link opts

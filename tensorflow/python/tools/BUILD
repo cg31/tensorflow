@@ -1,13 +1,7 @@
 # Description:
 #   Tools for manipulating TensorFlow graphs.
 
-package(
-    default_visibility = ["//visibility:public"],
-    features = [
-        "-layering_check",
-        "-parse_headers",
-    ],
-)
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -62,6 +56,7 @@ py_binary(
     srcs = [
         "graph_metrics.py",
     ],
+    srcs_version = "PY2AND3",
     main = "graph_metrics.py",
     deps = [
         "//tensorflow:tensorflow_py",

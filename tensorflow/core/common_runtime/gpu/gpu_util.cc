@@ -173,11 +173,17 @@ void GPUUtil::DeviceToDeviceCopy(DeviceContext* send_dev_context,
                                  const Tensor* input, Tensor* output,
                                  StatusCallback done) {
   const DeviceBase::GpuDeviceInfo* dev_info = nullptr;
-  gpu::Stream* stream = nullptr;
-  Status s =
-      PrepareCopy(src, send_dev_context, *input, output, &dev_info, &stream);
+  gpu::Stream* send_stream = nullptr;
+  Status s = PrepareCopy(src, send_dev_context, *input, output, &dev_info,
+                         &send_stream);
   if (!s.ok()) {
     done(s);
+    return;
+  }
+  auto send_copy_out_stream =
+      static_cast<const GPUDeviceContext*>(send_dev_context)->copy_out_stream();
+  if (send_copy_out_stream == nullptr) {
+    done(errors::Internal("No send gpu copy-out-stream is available."));
     return;
   }
 
@@ -187,20 +193,38 @@ void GPUUtil::DeviceToDeviceCopy(DeviceContext* send_dev_context,
     DeviceMemoryBase gpu_src_ptr(src_ptr, total_bytes);
     void* dst_ptr = GetBase(output);
     DeviceMemoryBase gpu_dst_ptr(dst_ptr, total_bytes);
+    auto recv_stream =
+        static_cast<const GPUDeviceContext*>(recv_dev_context)->stream();
+    if (recv_stream == nullptr) {
+      done(errors::Internal("No recv gpu stream is available."));
+      return;
+    }
+    // Wait for the main stream on the sender to make sure the result is
+    // available.
+    send_copy_out_stream->ThenWaitFor(send_stream);
+
+    // Since we want to use the memory from recv_stream in the
+    // send_copy_out_stream, add a dependency to make sure the memory is truely
+    // free.
+    // TODO(zhengxq): remove this dependency when we switch to a better way
+    // to make sure the memory is free.
+    send_copy_out_stream->ThenWaitFor(recv_stream);
+
     VLOG(2) << "src_ptr " << src_ptr << " dst_ptr " << dst_ptr;
-    stream->ThenMemcpy(&gpu_dst_ptr, gpu_src_ptr, total_bytes);
+    send_copy_out_stream->ThenMemcpy(&gpu_dst_ptr, gpu_src_ptr, total_bytes);
   }
 
   // Use of input may outlive stack scope, so keep a ref.
   TensorReference input_ref(*input);
-  dev_info->event_mgr->ThenExecute(stream, [done, stream, input_ref]() {
-    input_ref.Unref();
-    if (!stream->ok()) {
-      LOG(FATAL) << "GPU->GPU Memcpy failed";
-    }
-    done(Status::OK());
-  });
-  send_dev_context->MaintainLifetimeOnStream(input, stream);
+  dev_info->event_mgr->ThenExecute(send_copy_out_stream,
+                                   [done, send_copy_out_stream, input_ref]() {
+                                     input_ref.Unref();
+                                     if (!send_copy_out_stream->ok()) {
+                                       LOG(FATAL) << "GPU->GPU Memcpy failed";
+                                     }
+                                     done(Status::OK());
+                                   });
+  send_dev_context->MaintainLifetimeOnStream(input, send_copy_out_stream);
 }
 
 static CopyTensor::Registration register_gpu_gpu_copy(

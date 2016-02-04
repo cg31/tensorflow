@@ -269,17 +269,11 @@ py_library(
     ],
 )
 
-py_test(
+cuda_py_tests(
     name = "framework_function_test",
     srcs = ["framework/function_test.py"],
-    main = "framework/function_test.py",
-    srcs_version = "PY2AND3",
-    deps = [
-        ":framework_test_lib",
+    additional_deps = [
         ":functional_ops_lib",
-        ":platform_test",
-        "//tensorflow:tensorflow_py",
-        "//tensorflow/core:protos_all_py",
     ],
 )
 
@@ -493,6 +487,7 @@ tf_gen_op_wrapper_py(
         "TensorArrayGrad",
         "TensorArrayRead",
         "TensorArrayPack",
+        "TensorArraySize",
         "TensorArrayUnpack",
         "TensorArrayWrite",
     ],
@@ -977,6 +972,7 @@ cpu_only_kernel_test_list = glob([
     "kernel_tests/clip_ops_test.py",
     "kernel_tests/decode_csv_op_test.py",
     "kernel_tests/decode_raw_op_test.py",
+    "kernel_tests/depthtospace_op_test.py",
     "kernel_tests/determinant_op_test.py",
     "kernel_tests/diag_op_test.py",
     "kernel_tests/edit_distance_op_test.py",
@@ -1005,6 +1001,7 @@ cpu_only_kernel_test_list = glob([
     "kernel_tests/sparse_reorder_op_test.py",
     "kernel_tests/sparse_to_dense_op_test.py",
     "kernel_tests/sparsemask_op_test.py",
+    "kernel_tests/spacetodepth_op_test.py",
     "kernel_tests/summary_ops_test.py",
     "kernel_tests/template_test.py",
     "kernel_tests/topk_op_test.py",
