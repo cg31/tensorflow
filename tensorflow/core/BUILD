@@ -24,10 +24,12 @@
 #     common_runtime/: Common code for execution of graphs
 #     public/: Public APIs for running graphs
 # ":core" - The code for ":core_cpu" plus a GPU runtime
+# ":kernel_lib" - Library with code common to multiple kernel implementations.
 # ":gpu_kernels" - The gpu-specific kernels
-# ":kernels" - The cpu-specific kernels, plus ":gpu_kernels" if built with Cuda
+# ":all_kernels" - The cpu-specific kernels, plus ":gpu_kernels" if
+#     built with Cuda
 # ":tensorflow_opensource" - The complete open-source package, including
-#      ":kernels", ":core", and a Session implementation.
+#      ":all_kernels", ":core", and a Session implementation.
 # ":tensorflow" - "tensorflow_opensource" plus some Google-internal libraries.
 # ":testlib" - TensorFlow-specific test support, e.g. utilities for testing
 #      kernels.
@@ -408,8 +410,11 @@ tf_gpu_kernel_library(
     ],
 )
 
+# Common libraries used for implementing kernels.
+# TODO(josh11b): This also currently includes all the kernel implementations,
+# should split that out into the ":all_kernels" target.
 tf_cuda_library(
-    name = "kernels",
+    name = "kernel_lib",
     # TODO(josh11b): Pull common dependencies out into a separate library.
     srcs = glob(
         [
@@ -443,15 +448,24 @@ tf_cuda_library(
     alwayslink = 1,
 )
 
+# This includes implementations of all kernels built into TensorFlow.
+tf_cuda_library(
+    name = "all_kernels",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":kernel_lib",
+    ],
+)
+
 tf_cuda_library(
     name = "tensorflow_opensource",
     copts = tf_copts(),
     visibility = ["//visibility:public"],
     deps = [
+        ":all_kernels",
         ":core",
         ":direct_session",
         ":gpu_runtime",
-        ":kernels",
         ":lib",
     ],
 )
@@ -488,11 +502,12 @@ cc_library(
     copts = tf_copts(),
     visibility = ["//visibility:public"],
     deps = [
+        ":all_kernels",
         ":core_cpu",
         ":core_cpu_internal",
         ":framework",
         ":framework_internal",
-        ":kernels",
+        ":kernel_lib",
         ":lib",
         ":protos_all_cc",
         ":tensorflow",  # TODO(josh11b): Drop this dep?
@@ -705,7 +720,7 @@ filegroup(
 config_setting(
     name = "android",
     values = {
-        "crosstool_top": "//third_party/java/android/android_ndk_linux/toolchains:everything",
+        "crosstool_top": "//external:android/crosstool",
     },
 )
 
@@ -1066,18 +1081,20 @@ tf_cc_tests(
             # TODO(opensource): fix
             "common_runtime/gpu/*_test.cc",
             # Run by tests below
-            "common_runtime/gpu/gpu_region_allocator_test.cc",
+            "common_runtime/gpu/gpu_allocator_retry_test.cc",
             "common_runtime/gpu/gpu_bfc_allocator_test.cc",
+            "common_runtime/gpu/gpu_region_allocator_test.cc",
         ],
     ),
     deps = [
+        ":all_kernels",
         ":core",
         ":core_cpu",
         ":core_cpu_internal",
         ":direct_session",
         ":framework",
         ":framework_internal",
-        ":kernels",
+        ":kernel_lib",
         ":lib",
         ":lib_internal",
         ":ops",
@@ -1100,15 +1117,43 @@ tf_cc_tests(
             "user_ops/**/*_test.cc",
             "common_runtime/gpu/*_test.cc",
         ],
+        exclude = [
+            # Run by tests below
+            "common_runtime/gpu/gpu_allocator_retry_test.cc",
+        ],
     ),
     deps = [
+        ":all_kernels",
         ":core_cpu",
         ":core_cpu_internal",
         ":direct_session",
         ":framework",
         ":framework_internal",
         ":gpu_runtime",
-        ":kernels",
+        ":kernel_lib",
+        ":lib",
+        ":lib_internal",
+        ":protos_all_cc",
+        ":test",
+        ":test_main",
+        ":testlib",
+        "//tensorflow/cc:cc_ops",
+    ],
+)
+
+tf_cc_tests(
+    linkstatic = tf_kernel_tests_linkstatic(),
+    tags = tf_cuda_tests_tags() + ["nomac"],
+    tests = ["common_runtime/gpu/gpu_allocator_retry_test.cc"],
+    deps = [
+        ":all_kernels",
+        ":core_cpu",
+        ":core_cpu_internal",
+        ":direct_session",
+        ":framework",
+        ":framework_internal",
+        ":gpu_runtime",
+        ":kernel_lib",
         ":lib",
         ":lib_internal",
         ":protos_all_cc",
