@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""ZeroOut op Python library."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-set -e
+# pylint: disable=g-bad-import-order
+# pylint: disable=unused-import
+import os.path
 
-bazel build -c opt --config=cuda //tensorflow/tools/pip_package:build_pip_package
-rm -rf $HOME/.cache/tensorflow-pip
-bazel-bin/tensorflow/tools/pip_package/build_pip_package $HOME/.cache/tensorflow-pip
+import tensorflow.python.platform
+
+import tensorflow as tf
+
+_zero_out_module = tf.load_op_library(
+    os.path.join(tf.resource_loader.get_data_files_path(),
+                 'zero_out_op_kernel_3.so'))
+zero_out = _zero_out_module.zero_out

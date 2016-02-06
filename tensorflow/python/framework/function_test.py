@@ -22,6 +22,7 @@ from __future__ import print_function
 import tensorflow.python.platform
 # pylint: enable=unused-import,g-bad-import-order
 
+from six.moves import xrange
 import time
 import numpy as np
 import tensorflow as tf
@@ -151,7 +152,7 @@ class FunctionTest(tf.test.TestCase):
   def testDefineFunctionNoArgs(self):
 
     def AConstant():
-      return tf.constant([42.0])
+      return tf.constant([42])
 
     with tf.Graph().as_default():
       f_def = function.define_function(AConstant, {})
@@ -429,7 +430,7 @@ class UnrollLSTMTest(tf.test.TestCase):
       print("mode = ", mode)
       g = tf.Graph()
       start = time.time()
-      with g.as_default(), tf.device("/cpu:0"):
+      with g.as_default():
         weights = self._Weights()
         inp = self._Input()
         m = self._BuildForward(weights, inp, mode)
