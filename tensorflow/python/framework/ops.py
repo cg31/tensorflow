@@ -1135,10 +1135,10 @@ class Operation(object):
 
     Returns:
       The string name of the device to which this op has been
-      assigned, or None if it has not been assigned to a device.
+      assigned, or an empty string if it has not been assigned to a
+      device.
     """
-    dev = self._node_def.device
-    return None if not dev else dev
+    return self._node_def.device
 
   def _set_device(self, device):
     """Set the device of this operation.
@@ -1737,7 +1737,6 @@ class Graph(object):
   @@get_tensor_by_name
   @@get_operations
 
-  @@get_default_device
   @@seed
   @@unique_name
   @@version
@@ -1757,8 +1756,6 @@ class Graph(object):
     self._name_stack = ("", "")
     # Maps a name used in the graph to the next id to use for that name.
     self._names_in_use = {}
-    # Default device applied to new ops.
-    self._default_device = None
     # Functions that will be applied to choose a device if none is specified.
     self._device_function_stack = []
     # Default original_op applied to new ops.
@@ -1879,7 +1876,7 @@ class Graph(object):
     """
     self._control_flow_context = context
 
-  def as_graph_def(self, from_version=None):
+  def as_graph_def(self, from_version=None, add_shapes=False):
     """Returns a serialized `GraphDef` representation of this graph.
 
     The serialized `GraphDef` can be imported into another `Graph`
@@ -1892,6 +1889,8 @@ class Graph(object):
       from_version: Optional.  If this is set, returns a `GraphDef`
         containing only the nodes that were added to this graph since
         its `version` property had the given value.
+      add_shapes: If true, adds an "_output_shapes" list attr to each
+        node with the inferred shapes of each of its outputs.
 
     Returns:
       A [`GraphDef`](https://www.tensorflow.org/code/tensorflow/core/framework/graph.proto)
@@ -1907,6 +1906,9 @@ class Graph(object):
       op = self._nodes_by_id[op_id]
       if from_version is None or op_id > from_version:
         graph.node.extend([op.node_def])
+        if op.outputs and add_shapes:
+          graph.node[-1].attr["_output_shapes"].list.shape.extend([
+              output.get_shape().as_proto() for output in op.outputs])
         bytesize += op.node_def.ByteSize()
         if bytesize >= (1 << 31) or bytesize < 0:
           raise ValueError("GraphDef cannot be larger than 2GB.")
@@ -1964,7 +1966,7 @@ class Graph(object):
   # Helper functions to create operations.
   def create_op(self, op_type, inputs, dtypes,
                 input_types=None, name=None, attrs=None, op_def=None,
-                compute_shapes=True):
+                compute_shapes=True, compute_device=True):
     """Creates an `Operation` in this graph.
 
     This is a low-level interface for creating an `Operation`. Most
@@ -1992,6 +1994,8 @@ class Graph(object):
         the operation will have.
       compute_shapes: (Optional.) If True, shape inference will be performed
         to compute the shapes of the outputs.
+      compute_device: (Optional.) If True, device functions will be executed
+        to compute the device property of the Operation.
 
     Raises:
       TypeError: if any of the inputs is not a `Tensor`.
@@ -2013,8 +2017,7 @@ class Graph(object):
     else:
       name = self.unique_name(name)
 
-    node_def = _NodeDef(
-        op_type, name, device=self._default_device or None, attrs=attrs)
+    node_def = _NodeDef(op_type, name, device=None, attrs=attrs)
 
     # Apply a kernel label if one has been specified for this op_type.
     try:
@@ -2041,12 +2044,8 @@ class Graph(object):
       set_shapes_for_outputs(ret)
     self._add_op(ret)
     self._record_op_seen_by_control_dependencies(ret)
-    # Apply any device functions in reverse order, so that the most recently
-    # pushed function has the first chance to apply a device to the op.
-    # We apply here because the result can depend on the Operation's
-    # signature, which is computed in the Operation constructor.
-    for device_function in reversed(self._device_function_stack):
-      ret._set_device(device_function(ret))
+    if compute_device:
+      self._apply_device_functions(ret)
     return ret
 
   def as_graph_element(self, obj, allow_tensor=True, allow_operation=True):
@@ -2322,6 +2321,10 @@ class Graph(object):
           c.append(item)
       return c
 
+  def get_all_collection_keys(self):
+    """Returns a list of collections used in this graph."""
+    return [x for x in self._collections if isinstance(x, six.string_types)]
+
   @contextlib.contextmanager
   def _original_op(self, op):
     """Python 'with' handler to help annotate ops with their originator.
@@ -2489,54 +2492,6 @@ class Graph(object):
     else:
       return name
 
-  def _set_default_device(self, dev):
-    """Set the default device properties.
-
-    Args:
-      dev: string or Device.
-    """
-    self._default_device = _device_string(dev)
-
-  def get_default_device(self):
-    """Returns the default device.
-
-    Returns:
-      A string.
-    """
-    return self._default_device
-
-  def _push_default_device_function(self, device_function):
-    """Pushes the given function onto the stack of device functions.
-
-    See `Graph.device` for more details.
-
-    Args:
-      device_function: The function to be pushed onto the stack of device
-        functions.
-    """
-    self._device_function_stack.append(device_function)
-
-  def _pop_default_device_function(self, device_function):
-    """Pops the given function from the stack of device functions.
-
-    See `Graph.device` for more details.
-
-    Args:
-      device_function: The function to be popped from the stack of device
-        functions.
-
-    Raises:
-      ValueError: if the device_function to be popped is not top of the stack,
-        or if the stack is empty.
-    """
-    if not self._device_function_stack:
-      raise ValueError("Tried to pop, but the device function stack is empty")
-    if self._device_function_stack[-1] is not device_function:
-      raise ValueError("Tried to pop device function, but it was not on top "
-                       "of the stack")
-
-    self._device_function_stack.pop()
-
   @contextlib.contextmanager
   def device(self, device_name_or_function):
     """Returns a context manager that specifies the default device to use.
@@ -2545,12 +2500,14 @@ class Graph(object):
     string, a device function, or None:
 
     * If it is a device name string, all operations constructed in
-      this context will be assigned to the device with that name.
+      this context will be assigned to the device with that name, unless
+      overridden by a nested `device()` context.
     * If it is a function, it will be treated as function from
       Operation objects to device name strings, and invoked each time
       a new Operation is created. The Operation will be assigned to
       the device with the returned name.
-    * If it is None, the default device will be cleared.
+    * If it is None, all `device()` invocations from the enclosing context
+      will be ignored.
 
     For example:
 
@@ -2583,19 +2540,28 @@ class Graph(object):
       A context manager that specifies the default device to use for newly
       created ops.
     """
-    if callable(device_name_or_function):
-      try:
-        self._push_default_device_function(device_name_or_function)
-        yield
-      finally:
-        self._pop_default_device_function(device_name_or_function)
+    if (device_name_or_function is not None
+        and not callable(device_name_or_function)):
+      device_function = pydev.merge_device(device_name_or_function)
     else:
-      try:
-        old_dev = self.get_default_device()
-        self._set_default_device(_device_string(device_name_or_function))
-        yield
-      finally:
-        self._set_default_device(old_dev)
+      device_function = device_name_or_function
+
+    try:
+      self._device_function_stack.append(device_function)
+      yield
+    finally:
+      self._device_function_stack.pop()
+
+  def _apply_device_functions(self, op):
+    """Applies the current device function stack to the given operation."""
+    # Apply any device functions in reverse order, so that the most recently
+    # pushed function has the first chance to apply a device to the op.
+    # We apply here because the result can depend on the Operation's
+    # signature, which is computed in the Operation constructor.
+    for device_function in reversed(self._device_function_stack):
+      if device_function is None:
+        break
+      op._set_device(device_function(op))
 
   class _ControlDependenciesController(object):
     """Context manager for `control_dependencies()`."""
@@ -3338,6 +3304,9 @@ class GraphKeys(object):
     for more details.
   * `REGULARIZATION_LOSSES`: regularization losses collected during graph
     construction.
+  * `WEIGHTS`: weights inside neural network layers
+  * `BIASES`: biases inside neural network layers
+  * `ACTIVATIONS`: activations of neural network layers
   """
 
   # Key to collect Variable objects that must be saved and restored
@@ -3357,10 +3326,23 @@ class GraphKeys(object):
   ASSET_FILEPATHS = "asset_filepaths"
   # Key to collect Variable objects that keep moving averages.
   MOVING_AVERAGE_VARIABLES = "moving_average_variables"
-  # Key to collected regularization losses at graph construction.
+  # Key to collect regularization losses at graph construction.
   REGULARIZATION_LOSSES = "regularization_losses"
   # Key to collect concatenated sharded variables.
   CONCATENATED_VARIABLES = "concatenated_variables"
+  # Key to collect savers.
+  SAVERS = "savers"
+  # Key to collect weights
+  WEIGHTS = "weights"
+  # Key to collect biases
+  BIASES = "biases"
+  # Key to collect activations
+  ACTIVATIONS = "activations"
+
+  # Key to indicate various ops.
+  INIT_OP = "init_op"
+  READY_OP = "ready_op"
+  GLOBAL_STEP = "global_step"
 
 
 def add_to_collection(name, value):
@@ -3412,6 +3394,11 @@ def get_collection(key, scope=None):
   return get_default_graph().get_collection(key, scope)
 
 
+def get_all_collection_keys():
+  """Returns a list of collections used in the default graph."""
+  return get_default_graph().get_all_collection_keys()
+
+
 # pylint: disable=g-doc-return-or-yield
 @contextlib.contextmanager
 def op_scope(values, name, default_name=None):
@@ -3453,3 +3440,56 @@ def op_scope(values, name, default_name=None):
   with g.as_default(), g.name_scope(n) as scope:
     yield scope
 # pylint: enable=g-doc-return-or-yield
+
+
+_proto_function_registry = registry.Registry("proto functions")
+
+
+def register_proto_function(collection_name, proto_type=None, to_proto=None,
+                            from_proto=None):
+  """Registers `to_proto` and `from_proto` functions for collection_name.
+
+  `to_proto` function converts a Python object to the corresponding protocol
+  buffer, and returns the protocol buffer.
+
+  `from_proto` function converts protocol buffer into a Python object, and
+  returns the object..
+
+  Args:
+    collection_name: Name of the collection.
+    proto_type: Protobuf type, such as `saver_pb2.SaverDef`,
+      `variable_pb2.VariableDef`, `queue_runner_pb2.QueueRunnerDef`..
+    to_proto: Function that implements Python object to protobuf conversion.
+    from_proto: Function that implements protobuf to Python object conversion.
+  """
+  if to_proto and not callable(to_proto):
+    raise TypeError("to_proto must be callable.")
+  if from_proto and not callable(from_proto):
+    raise TypeError("from_proto must be callable.")
+
+  _proto_function_registry.register((proto_type, to_proto, from_proto),
+                                    collection_name)
+
+
+def get_collection_proto_type(collection_name):
+  """Returns the proto_type for collection_name."""
+  try:
+    return _proto_function_registry.lookup(collection_name)[0]
+  except LookupError:
+    return None
+
+
+def get_to_proto_function(collection_name):
+  """Returns the to_proto function for collection_name."""
+  try:
+    return _proto_function_registry.lookup(collection_name)[1]
+  except LookupError:
+    return None
+
+
+def get_from_proto_function(collection_name):
+  """Returns the from_proto function for collection_name."""
+  try:
+    return _proto_function_registry.lookup(collection_name)[2]
+  except LookupError:
+    return None

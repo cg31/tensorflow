@@ -19,7 +19,6 @@ py_library(
     name = "python",
     srcs = [
         "__init__.py",
-        "unsupported.py",
     ],
     srcs_version = "PY2AND3",
     visibility = ["//tensorflow:__pkg__"],
@@ -327,6 +326,7 @@ py_test(
         ":platform_test",
         ":session",
         ":test_ops",
+        "//tensorflow/core:protos_all_py",
     ],
 )
 
@@ -334,6 +334,18 @@ py_test(
     name = "framework_tensor_shape_test",
     srcs = ["framework/tensor_shape_test.py"],
     main = "framework/tensor_shape_test.py",
+    srcs_version = "PY2AND3",
+    deps = [
+        ":framework_test_lib",
+        ":platform_test",
+        "//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_test(
+    name = "framework_device_test",
+    srcs = ["framework/device_test.py"],
+    main = "framework/device_test.py",
     srcs_version = "PY2AND3",
     deps = [
         ":framework_test_lib",
@@ -497,6 +509,7 @@ tf_gen_op_wrapper_py(
 tf_gen_op_wrapper_py(
     name = "image_ops",
     hidden = [
+        "RandomCrop",
         "ResizeBilinearGrad",
         "ResizeNearestNeighborGrad",
         "AdjustContrastv2",
@@ -715,7 +728,6 @@ py_library(
         "ops/image_ops.py",
         "ops/init_ops.py",
         "ops/io_ops.py",
-        "ops/learn.py",
         "ops/linalg_grad.py",
         "ops/linalg_ops.py",
         "ops/logging_ops.py",
@@ -814,16 +826,8 @@ tf_proto_library_py(
         ["**/*.proto"],
         exclude = [
             "util/protobuf/compare_test.proto",
-            "training/saver.proto",
         ],
     ),
-    deps = [":public_protos_py"],
-)
-
-tf_proto_library(
-    name = "public_protos",
-    srcs = ["training/saver.proto"],
-    visibility = ["//visibility:public"],
 )
 
 tf_proto_library_py(
