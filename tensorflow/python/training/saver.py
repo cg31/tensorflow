@@ -26,15 +26,18 @@ import time
 import numpy as np
 import six
 
+from google.protobuf.any_pb2 import Any
 from google.protobuf import text_format
 
 from tensorflow.core.framework import graph_pb2
+from tensorflow.core.framework import op_def_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.client import graph_util
 from tensorflow.python.client import session
 from tensorflow.python.framework import device as pydev
 from tensorflow.python.framework import importer
+from tensorflow.python.framework import op_def_registry
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import constant_op
@@ -48,6 +51,20 @@ from tensorflow.python.platform import logging
 from tensorflow.python.training import training_util
 from tensorflow.python.training.checkpoint_state_pb2 import CheckpointState
 from tensorflow.python.util import compat
+
+
+def _stripped_op_list_for_graph(graph_def):
+  """Returns OpDefs of ops used in graph_def."""
+  op_set = set()
+  registered_ops = op_def_registry.get_registered_ops()
+  for n in graph_def.node:
+    if n.op in registered_ops:
+      op_set.add(n.op)
+  for func in graph_def.library.function:
+    for n in func.node:
+      if n.op in registered_ops:
+        op_set.add(n.op)
+  return op_def_pb2.OpList(op=[registered_ops[x] for x in sorted(op_set)])
 
 
 class BaseSaverBuilder(object):
@@ -954,23 +971,27 @@ class Saver(object):
     update_checkpoint_state(save_path, model_checkpoint_path,
                             self.last_checkpoints, latest_filename)
     meta_graph_file_name = ".".join([checkpoint_file, meta_graph_suffix])
-    self.export_meta_graph(meta_graph_file_name)
+    with sess.graph.as_default():
+      self.export_meta_graph(meta_graph_file_name)
 
     return model_checkpoint_path
 
-  def export_meta_graph(self, filename=None, collection_list=None):
+  def export_meta_graph(self, filename=None, collection_list=None,
+                        as_text=False):
     """Writes `MetaGraphDef` to save_path/filename.
 
     Args:
       filename: Optional meta_graph filename including the path.
       collection_list: List of string keys to collect.
+      as_text: If `True`, writes the meta_graph as an ASCII proto.
 
     Returns:
       A `MetaGraphDef` proto.
     """
     return export_meta_graph(filename=filename, graph_def=self.graph_def,
                              saver_def=self.saver_def,
-                             collection_list=collection_list)
+                             collection_list=collection_list,
+                             as_text=as_text)
 
   def restore(self, sess, save_path):
     """Restores previously saved variables.
@@ -1031,12 +1052,14 @@ def _get_kind_name(item):
   Returns:
     The string representation of the kind in CollectionDef.
   """
-  if isinstance(item, (str, bytes, unicode)):
+  if isinstance(item, six.string_types) or isinstance(item, bytes):
     kind = "bytes_list"
   elif isinstance(item, (int, long)):
     kind = "int64_list"
   elif isinstance(item, float):
     kind = "float_list"
+  elif isinstance(item, Any):
+    kind = "any_list"
   else:
     kind = "node_list"
   return kind
@@ -1049,7 +1072,7 @@ def _add_collection_def(meta_graph_def, key):
     meta_graph_def: MetaGraphDef protocol buffer.
     key: One of the GraphKeys or user-defined string.
   """
-  if not isinstance(key, (str, bytes, unicode)):
+  if not isinstance(key, six.string_types) and not isinstance(key, bytes):
     logging.warning("Only collections with string type keys will be "
                     "serialized. This key has %s" % type(key))
     return
@@ -1074,7 +1097,7 @@ def _add_collection_def(meta_graph_def, key):
         getattr(col_def, kind).value.extend([x.name for x in collection_list])
       else:
         getattr(col_def, kind).value.extend([x for x in collection_list])
-  except Exception, e:  # pylint: disable=broad-except
+  except Exception as e:  # pylint: disable=broad-except
     logging.warning("Type is unsupported, or the types of the items don't "
                     "match field type in CollectionDef.\n%s" % str(e))
     if key in meta_graph_def.collection_def:
@@ -1115,14 +1138,25 @@ def _as_meta_graph_def(meta_info_def=None, graph_def=None, saver_def=None,
   # Adds meta_info_def.
   if meta_info_def:
     meta_graph_def.meta_info_def.MergeFrom(meta_info_def)
-  # Adds graph_def.
+
+  # Adds graph_def or the default.
   if not graph_def:
     meta_graph_def.graph_def.MergeFrom(ops.get_default_graph().as_graph_def())
   else:
     meta_graph_def.graph_def.MergeFrom(graph_def)
+
+  # Fills in meta_info_def.stripped_op_list using the ops from graph_def.
+  # pylint: disable=g-explicit-length-test
+  if len(meta_graph_def.meta_info_def.stripped_op_list.op) == 0:
+    meta_graph_def.meta_info_def.stripped_op_list.MergeFrom(
+        _stripped_op_list_for_graph(meta_graph_def.graph_def))
+  # pylint: enable=g-explicit-length-test
+
   # Adds saver_def.
   if saver_def:
     meta_graph_def.saver_def.MergeFrom(saver_def)
+
+  # Adds collection_list.
   if collection_list:
     clist = collection_list
   else:
@@ -1140,10 +1174,24 @@ def _read_meta_graph_file(filename):
 
   Returns:
     A `MetaGraphDef` protocol buffer.
+
+  Raises:
+    IOError: If the file doesn't exist, or cannot be successfully parsed.
   """
   meta_graph_def = meta_graph_pb2.MetaGraphDef()
-  with gfile.FastGFile(filename, "r") as f:
-    text_format.Merge(f.read(), meta_graph_def)
+  # First try to read it as a binary file.
+  if not gfile.Exists(filename):
+    raise IOError("File %s does not exist." % filename)
+  with gfile.FastGFile(filename, "rb") as f:
+    file_content = f.read()
+    try:
+      meta_graph_def.ParseFromString(file_content)
+    except Exception:  # pylint: disable=broad-except
+      try:
+        # Next try to read it as a text file.
+        text_format.Merge(file_content, meta_graph_def)
+      except text_format.ParseError as e:
+        raise IOError("Cannot parse file %s: %s." % (filename, str(e)))
   return meta_graph_def
 
 
@@ -1163,7 +1211,7 @@ def _import_meta_graph_def(meta_graph_def):
   importer.import_graph_def(meta_graph_def.graph_def, name="")
 
   # Restores all the other collections.
-  for key, col_def in meta_graph_def.collection_def.iteritems():
+  for key, col_def in meta_graph_def.collection_def.items():
     kind = col_def.WhichOneof("kind")
     if kind is None:
       logging.error("Cannot identify data type for collection %s. Skipping."
@@ -1223,7 +1271,7 @@ def import_meta_graph(meta_graph_or_file):
 
 
 def export_meta_graph(filename=None, meta_info_def=None, graph_def=None,
-                      saver_def=None, collection_list=None):
+                      saver_def=None, collection_list=None, as_text=False):
   """Returns `MetaGraphDef` proto. Optionally writes it to filename.
 
   This function exports the graph, saver, and collection objects into
@@ -1238,6 +1286,7 @@ def export_meta_graph(filename=None, meta_info_def=None, graph_def=None,
     graph_def: `GraphDef` protocol buffer.
     saver_def: `SaverDef` protocol buffer.
     collection_list: List of string keys to collect.
+    as_text: If `True`, writes the `MetaGraphDef` as an ASCII proto.
 
   Returns:
     A `MetaGraphDef` proto.
@@ -1248,11 +1297,10 @@ def export_meta_graph(filename=None, meta_info_def=None, graph_def=None,
                                       collection_list=collection_list)
   if filename:
     training_util.write_graph(meta_graph_def, os.path.dirname(filename),
-                              os.path.basename(filename))
+                              os.path.basename(filename), as_text=as_text)
   return meta_graph_def
 
 ops.register_proto_function(ops.GraphKeys.SAVERS,
                             proto_type=saver_pb2.SaverDef,
                             to_proto=Saver.to_proto,
                             from_proto=Saver.from_proto)
-

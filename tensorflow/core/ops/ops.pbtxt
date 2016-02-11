@@ -1932,6 +1932,42 @@ op {
   description: "This operation outputs \"ref\" after the update is done.  This makes it\neasier to chain operations that need to use the updated value."
 }
 op {
+  name: "Cross"
+  input_arg {
+    name: "a"
+    description: "A tensor containing 3-element vectors."
+    type_attr: "T"
+  }
+  input_arg {
+    name: "b"
+    description: "Another tensor, of same type and shape as `a`."
+    type_attr: "T"
+  }
+  output_arg {
+    name: "product"
+    description: "Pairwise cross product of the vectors in `a` and `b`."
+    type_attr: "T"
+  }
+  attr {
+    name: "T"
+    type: "type"
+    allowed_values {
+      list {
+        type: DT_FLOAT
+        type: DT_DOUBLE
+        type: DT_INT32
+        type: DT_INT64
+        type: DT_UINT8
+        type: DT_INT16
+        type: DT_INT8
+        type: DT_UINT16
+      }
+    }
+  }
+  summary: "Compute the pairwise cross product."
+  description: "`a` and `b` must be the same shape; they can either be simple 3-element vectors,\nor any shape where the innermost dimension is 3. In the latter case, each pair\nof corresponding 3-element vectors is cross-multiplied independently."
+}
+op {
   name: "DecodeCSV"
   input_arg {
     name: "records"
@@ -9846,7 +9882,7 @@ op {
     type: "type"
   }
   summary: "Finds unique elements in a 1-D tensor."
-  description: "This operation returns a tensor `y` containing all of the unique elements of `x`\nsorted in the same order that they occur in `x`. This operation also returns a\ntensor `idx` the same size as `x` that contains the index of each value of `x`\nin the unique output `y`. Finally, it returns a third tensor `count` that\ncontains the count of each element of `y` in `x`. In other words:\n\n`y[idx[i]] = x[i] for i in [0, 1,...,rank(x) - 1]`\n\nFor example:\n\n```prettyprint\n# tensor \'x\' is [1, 1, 2, 4, 4, 4, 7, 8, 8]\ny, idx, count = unique(x)\ny ==> [1, 2, 4, 7, 8]\nidx ==> [0, 0, 1, 2, 2, 2, 3, 4, 4]\ncount ==> [2, 1, 3, 1, 2]\n```"
+  description: "This operation returns a tensor `y` containing all of the unique elements of `x`\nsorted in the same order that they occur in `x`. This operation also returns a\ntensor `idx` the same size as `x` that contains the index of each value of `x`\nin the unique output `y`. Finally, it returns a third tensor `count` that\ncontains the count of each element of `y` in `x`. In other words:\n\n`y[idx[i]] = x[i] for i in [0, 1,...,rank(x) - 1]`\n\nFor example:\n\n```prettyprint\n# tensor \'x\' is [1, 1, 2, 4, 4, 4, 7, 8, 8]\ny, idx, count = unique_with_counts(x)\ny ==> [1, 2, 4, 7, 8]\nidx ==> [0, 0, 1, 2, 2, 2, 3, 4, 4]\ncount ==> [2, 1, 3, 1, 2]\n```"
 }
 op {
   name: "Unpack"

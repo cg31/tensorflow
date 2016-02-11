@@ -19,7 +19,6 @@ py_library(
     name = "python",
     srcs = [
         "__init__.py",
-        "unsupported.py",
     ],
     srcs_version = "PY2AND3",
     visibility = ["//tensorflow:__pkg__"],
@@ -510,6 +509,7 @@ tf_gen_op_wrapper_py(
 tf_gen_op_wrapper_py(
     name = "image_ops",
     hidden = [
+        "RandomCrop",
         "ResizeBilinearGrad",
         "ResizeNearestNeighborGrad",
         "AdjustContrastv2",
@@ -728,7 +728,6 @@ py_library(
         "ops/image_ops.py",
         "ops/init_ops.py",
         "ops/io_ops.py",
-        "ops/learn.py",
         "ops/linalg_grad.py",
         "ops/linalg_ops.py",
         "ops/logging_ops.py",

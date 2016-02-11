@@ -40,14 +40,11 @@ from __future__ import print_function
 
 import tensorflow.python.platform
 
-# pylint: disable=redefined-builtin
-from six.moves.builtins import bytes
 import tensorflow as tf
 
 from google.protobuf import text_format
 from tensorflow.python.client import graph_util
 from tensorflow.python.framework import tensor_util
-from tensorflow.python.platform import gfile
 
 
 FLAGS = tf.app.flags.FLAGS
@@ -94,15 +91,15 @@ def freeze_graph(input_graph, input_saver, input_binary, input_checkpoint,
                  output_graph, clear_devices):
   """Converts all variables in a graph and checkpoint into constants."""
 
-  if not gfile.Exists(input_graph):
+  if not tf.gfile.Exists(input_graph):
     print("Input graph file '" + input_graph + "' does not exist!")
     return -1
 
-  if input_saver and not gfile.Exists(input_saver):
+  if input_saver and not tf.gfile.Exists(input_saver):
     print("Input saver file '" + input_saver + "' does not exist!")
     return -1
 
-  if not gfile.Exists(input_checkpoint):
+  if not tf.gfile.Exists(input_checkpoint):
     print("Input checkpoint '" + input_checkpoint + "' doesn't exist!")
     return -1
 
@@ -111,11 +108,12 @@ def freeze_graph(input_graph, input_saver, input_binary, input_checkpoint,
     return -1
 
   input_graph_def = tf.GraphDef()
-  with open(input_graph, "rb") as f:
+  mode = "rb" if input_binary else "r"
+  with open(input_graph, mode) as f:
     if input_binary:
       input_graph_def.ParseFromString(f.read())
     else:
-      text_format.Merge(bytes(f.read()), input_graph_def)
+      text_format.Merge(f.read(), input_graph_def)
   # Remove all the explicit device specifications for this node. This helps to
   # make the graph more portable.
   if clear_devices:
@@ -125,7 +123,7 @@ def freeze_graph(input_graph, input_saver, input_binary, input_checkpoint,
 
   with tf.Session() as sess:
     if input_saver:
-      with open(input_saver, "rb") as f:
+      with open(input_saver, mode) as f:
         saver_def = tf.train.SaverDef()
         if input_binary:
           saver_def.ParseFromString(f.read())
@@ -162,7 +160,7 @@ def freeze_graph(input_graph, input_saver, input_binary, input_checkpoint,
       output_node.CopyFrom(input_node)
     output_graph_def.node.extend([output_node])
 
-  with gfile.FastGFile(output_graph, "w") as f:
+  with tf.gfile.FastGFile(output_graph, "wb") as f:
     f.write(output_graph_def.SerializeToString())
   print("Converted %d variables to const ops." % how_many_converted)
   print("%d ops in the final graph." % len(output_graph_def.node))

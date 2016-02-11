@@ -1876,7 +1876,7 @@ class Graph(object):
     """
     self._control_flow_context = context
 
-  def as_graph_def(self, from_version=None):
+  def as_graph_def(self, from_version=None, add_shapes=False):
     """Returns a serialized `GraphDef` representation of this graph.
 
     The serialized `GraphDef` can be imported into another `Graph`
@@ -1889,6 +1889,8 @@ class Graph(object):
       from_version: Optional.  If this is set, returns a `GraphDef`
         containing only the nodes that were added to this graph since
         its `version` property had the given value.
+      add_shapes: If true, adds an "_output_shapes" list attr to each
+        node with the inferred shapes of each of its outputs.
 
     Returns:
       A [`GraphDef`](https://www.tensorflow.org/code/tensorflow/core/framework/graph.proto)
@@ -1904,6 +1906,9 @@ class Graph(object):
       op = self._nodes_by_id[op_id]
       if from_version is None or op_id > from_version:
         graph.node.extend([op.node_def])
+        if op.outputs and add_shapes:
+          graph.node[-1].attr["_output_shapes"].list.shape.extend([
+              output.get_shape().as_proto() for output in op.outputs])
         bytesize += op.node_def.ByteSize()
         if bytesize >= (1 << 31) or bytesize < 0:
           raise ValueError("GraphDef cannot be larger than 2GB.")
@@ -1961,7 +1966,7 @@ class Graph(object):
   # Helper functions to create operations.
   def create_op(self, op_type, inputs, dtypes,
                 input_types=None, name=None, attrs=None, op_def=None,
-                compute_shapes=True):
+                compute_shapes=True, compute_device=True):
     """Creates an `Operation` in this graph.
 
     This is a low-level interface for creating an `Operation`. Most
@@ -1989,6 +1994,8 @@ class Graph(object):
         the operation will have.
       compute_shapes: (Optional.) If True, shape inference will be performed
         to compute the shapes of the outputs.
+      compute_device: (Optional.) If True, device functions will be executed
+        to compute the device property of the Operation.
 
     Raises:
       TypeError: if any of the inputs is not a `Tensor`.
@@ -2037,14 +2044,8 @@ class Graph(object):
       set_shapes_for_outputs(ret)
     self._add_op(ret)
     self._record_op_seen_by_control_dependencies(ret)
-    # Apply any device functions in reverse order, so that the most recently
-    # pushed function has the first chance to apply a device to the op.
-    # We apply here because the result can depend on the Operation's
-    # signature, which is computed in the Operation constructor.
-    for device_function in reversed(self._device_function_stack):
-      if device_function is None:
-        break
-      ret._set_device(device_function(ret))
+    if compute_device:
+      self._apply_device_functions(ret)
     return ret
 
   def as_graph_element(self, obj, allow_tensor=True, allow_operation=True):
@@ -2322,7 +2323,7 @@ class Graph(object):
 
   def get_all_collection_keys(self):
     """Returns a list of collections used in this graph."""
-    return [x for x in self._collections if isinstance(x, (str, unicode))]
+    return [x for x in self._collections if isinstance(x, six.string_types)]
 
   @contextlib.contextmanager
   def _original_op(self, op):
@@ -2550,6 +2551,17 @@ class Graph(object):
       yield
     finally:
       self._device_function_stack.pop()
+
+  def _apply_device_functions(self, op):
+    """Applies the current device function stack to the given operation."""
+    # Apply any device functions in reverse order, so that the most recently
+    # pushed function has the first chance to apply a device to the op.
+    # We apply here because the result can depend on the Operation's
+    # signature, which is computed in the Operation constructor.
+    for device_function in reversed(self._device_function_stack):
+      if device_function is None:
+        break
+      op._set_device(device_function(op))
 
   class _ControlDependenciesController(object):
     """Context manager for `control_dependencies()`."""
@@ -3292,6 +3304,9 @@ class GraphKeys(object):
     for more details.
   * `REGULARIZATION_LOSSES`: regularization losses collected during graph
     construction.
+  * `WEIGHTS`: weights inside neural network layers
+  * `BIASES`: biases inside neural network layers
+  * `ACTIVATIONS`: activations of neural network layers
   """
 
   # Key to collect Variable objects that must be saved and restored
@@ -3317,6 +3332,12 @@ class GraphKeys(object):
   CONCATENATED_VARIABLES = "concatenated_variables"
   # Key to collect savers.
   SAVERS = "savers"
+  # Key to collect weights
+  WEIGHTS = "weights"
+  # Key to collect biases
+  BIASES = "biases"
+  # Key to collect activations
+  ACTIVATIONS = "activations"
 
   # Key to indicate various ops.
   INIT_OP = "init_op"

@@ -12,23 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""layers module with higher level NN primitives."""
 
-"""This module includes unsupported and experimental features which are exposed
-but not part of the supported public API.  Anything in this module can change
-without notice, even across a patch release.
-
-## Utilities
-
-@@constant_value
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.python.platform
-from tensorflow.python.util.all_util import make_all
-
-# pylint: disable=unused-import
-from tensorflow.python.framework.tensor_util import constant_value
-
-__all__ = make_all(__name__)
+# pylint: disable=wildcard-import
+from tensorflow.contrib.layers.python.layers.initializers import *
+from tensorflow.contrib.layers.python.layers.layers import *
+from tensorflow.contrib.layers.python.layers.regularizers import *
+from tensorflow.contrib.layers.python.layers.summaries import *

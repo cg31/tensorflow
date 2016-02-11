@@ -77,10 +77,11 @@ from tensorflow.python.ops import common_shapes
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import logging_ops
-# pylint: disable=wildcard-import
 # 'Constant' gets imported in the module 'array_ops'.
 from tensorflow.python.ops.constant_op import constant
+# pylint: disable=wildcard-import
 from tensorflow.python.ops.gen_array_ops import *
+# pylint: enable=wildcard-import
 
 
 # We override the 'slice' for the "slice" op, so we keep python's
@@ -559,8 +560,8 @@ def transpose(a, perm=None, name="transpose"):
   """
   with ops.op_scope([a], name, "transpose") as name:
     if perm is None:
-      dims = gen_math_ops._range(0, gen_array_ops.rank(a), 1)
-      perm = gen_array_ops.reverse(dims, [True])
+      rank = gen_array_ops.rank(a)
+      perm = (rank - 1) - gen_math_ops._range(0, rank, 1)
       ret = gen_array_ops.transpose(a, perm, name=name)
       # NOTE(mrry): Setting the shape explicitly because
       #   reverse is not handled by the shape function.

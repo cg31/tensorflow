@@ -27,7 +27,6 @@ import tensorflow as tf
 
 from tensorflow.python.framework import errors
 from tensorflow.python.ops import script_ops
-from six.moves import xrange
 
 
 class PyOpTest(tf.test.TestCase):
@@ -79,16 +78,16 @@ class PyOpTest(tf.test.TestCase):
   def testStrings(self):
 
     def read_fixed_length_numpy_strings():
-      return np.array([" there"])
+      return np.array([b" there"])
 
     def read_and_return_strings(x, y):
       return x + y
 
     with self.test_session():
-      x = tf.constant(["hello", "hi"], tf.string)
+      x = tf.constant([b"hello", b"hi"], tf.string)
       y, = tf.py_func(read_fixed_length_numpy_strings, [], [tf.string])
       z, = tf.py_func(read_and_return_strings, [x, y], [tf.string])
-      self.assertListEqual(list(z.eval()), ["hello there", "hi there"])
+      self.assertListEqual(list(z.eval()), [b"hello there", b"hi there"])
 
   def testLarge(self):
     with self.test_session() as sess:

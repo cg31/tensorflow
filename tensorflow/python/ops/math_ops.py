@@ -25,6 +25,7 @@ operators to your graph.
 @@truediv
 @@floordiv
 @@mod
+@@cross
 
 ## Basic Math Functions
 
@@ -186,7 +187,7 @@ from tensorflow.python.ops import state_ops
 from tensorflow.python.ops import gen_state_ops
 # pylint: disable=wildcard-import,undefined-variable
 from tensorflow.python.ops.gen_math_ops import *
-
+# pylint: enable=wildcard-import
 
 # Aliases for some automatically-generated names.
 argmax = gen_math_ops.arg_max
@@ -1223,6 +1224,7 @@ ops.RegisterShape("Abs")(common_shapes.unchanged_shape)
 ops.RegisterShape("Ceil")(common_shapes.unchanged_shape)
 ops.RegisterShape("Conj")(common_shapes.unchanged_shape)
 ops.RegisterShape("Cos")(common_shapes.unchanged_shape)
+ops.RegisterShape("Cross")(common_shapes.unchanged_shape)
 ops.RegisterShape("Exp")(common_shapes.unchanged_shape)
 ops.RegisterShape("Floor")(common_shapes.unchanged_shape)
 ops.RegisterShape("Imag")(common_shapes.unchanged_shape)
