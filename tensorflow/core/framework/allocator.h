@@ -125,6 +125,7 @@ class Allocator {
   // allocated by this allocator.
   virtual size_t RequestedSize(void* ptr) {
     CHECK(false) << "allocator doesn't track sizes";
+    return 0;
   }
 
   // Returns the allocated size of the buffer at 'ptr' if known,
@@ -240,7 +241,7 @@ struct AllocatorAttributes {
 
   void Merge(AllocatorAttributes other) { value |= other.value; }
 
-  uint32 value = 0;
+  uint8 value = 0;
 };
 
 // Returns a trivial implementation of Allocator which uses the system
