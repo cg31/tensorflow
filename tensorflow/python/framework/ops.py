@@ -2901,7 +2901,7 @@ class Graph(object):
   # pylint: enable=g-doc-return-or-yield
 
 
-def device(device_name_or_function):
+def device(dev):
   """Wrapper for `Graph.device()` using the default graph.
 
   See
@@ -2916,7 +2916,7 @@ def device(device_name_or_function):
     A context manager that specifies the default device to use for newly
     created ops.
   """
-  return get_default_graph().device(device_name_or_function)
+  return get_default_graph().device(dev)
 
 
 def name_scope(name):

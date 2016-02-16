@@ -22,7 +22,6 @@ limitations under the License.
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include "tensorflow/core/platform/default/thread_annotations.h"
 
 namespace tensorflow {
 
@@ -30,24 +29,16 @@ enum LinkerInitialized { LINKER_INITIALIZED };
 
 // A class that wraps around the std::mutex implementation, only adding an
 // additional LinkerInitialized constructor interface.
-class LOCKABLE mutex : public std::mutex {
+class mutex : public std::mutex {
  public:
   mutex() {}
   // The default implementation of std::mutex is safe to use after the linker
   // initializations
   explicit mutex(LinkerInitialized x) {}
-
-  void lock() ACQUIRE() { std::mutex::lock(); }
-  void unlock() RELEASE() { std::mutex::unlock(); }
-};
-
-class SCOPED_LOCKABLE mutex_lock : public std::unique_lock<std::mutex> {
- public:
-  mutex_lock(class mutex& m) ACQUIRE(m) : std::unique_lock<std::mutex>(m) {}
-  ~mutex_lock() RELEASE() {}
 };
 
 using std::condition_variable;
+typedef std::unique_lock<std::mutex> mutex_lock;
 
 inline ConditionResult WaitForMilliseconds(mutex_lock* mu,
                                            condition_variable* cv, int64 ms) {
