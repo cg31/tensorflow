@@ -56,42 +56,50 @@ AlphaNum::AlphaNum(Hex hex) {
 // Append is merely a version of memcpy that returns the address of the byte
 // after the area just overwritten.  It comes in multiple flavors to minimize
 // call overhead.
-static void Append1(string *out, const AlphaNum &x) {
-  out->append(x.data(), x.size());
+static char *Append1(char *out, const AlphaNum &x) {
+  memcpy(out, x.data(), x.size());
+  return out + x.size();
 }
 
-static void Append2(string *out, const AlphaNum &x1, const AlphaNum &x2) {
-  out->append(x1.data(), x1.size());
-  out->append(x2.data(), x2.size());
+static char *Append2(char *out, const AlphaNum &x1, const AlphaNum &x2) {
+  memcpy(out, x1.data(), x1.size());
+  out += x1.size();
+
+  memcpy(out, x2.data(), x2.size());
+  return out + x2.size();
 }
 
-static void Append3(string *out, const AlphaNum &x1, const AlphaNum &x2,
-                     const AlphaNum &x3) {
-  out->append(x1.data(), x1.size());
-  out->append(x2.data(), x2.size());
-  out->append(x3.data(), x3.size());
-}
+static char *Append4(char *out, const AlphaNum &x1, const AlphaNum &x2,
+                     const AlphaNum &x3, const AlphaNum &x4) {
+  memcpy(out, x1.data(), x1.size());
+  out += x1.size();
 
-static void Append4(string *out, const AlphaNum &x1, const AlphaNum &x2,
-    const AlphaNum &x3, const AlphaNum &x4)
-{
-  out->append(x1.data(), x1.size());
-  out->append(x2.data(), x2.size());
-  out->append(x3.data(), x3.size());
-  out->append(x4.data(), x4.size());
+  memcpy(out, x2.data(), x2.size());
+  out += x2.size();
+
+  memcpy(out, x3.data(), x3.size());
+  out += x3.size();
+
+  memcpy(out, x4.data(), x4.size());
+  return out + x4.size();
 }
 
 string StrCat(const AlphaNum &a, const AlphaNum &b) {
   string result;
   gtl::STLStringResizeUninitialized(&result, a.size() + b.size());
-  Append2(&result, a, b);
+  char *const begin = &*result.begin();
+  char *out = Append2(begin, a, b);
+  DCHECK_EQ(out, begin + result.size());
   return result;
 }
 
 string StrCat(const AlphaNum &a, const AlphaNum &b, const AlphaNum &c) {
   string result;
   gtl::STLStringResizeUninitialized(&result, a.size() + b.size() + c.size());
-  Append3(&result, a, b, c);
+  char *const begin = &*result.begin();
+  char *out = Append2(begin, a, b);
+  out = Append1(out, c);
+  DCHECK_EQ(out, begin + result.size());
   return result;
 }
 
@@ -100,7 +108,9 @@ string StrCat(const AlphaNum &a, const AlphaNum &b, const AlphaNum &c,
   string result;
   gtl::STLStringResizeUninitialized(&result,
                                     a.size() + b.size() + c.size() + d.size());
-  Append4(&result, a, b, c, d);
+  char *const begin = &*result.begin();
+  char *out = Append4(begin, a, b, c, d);
+  DCHECK_EQ(out, begin + result.size());
   return result;
 }
 
@@ -113,9 +123,14 @@ string CatPieces(std::initializer_list<StringPiece> pieces) {
   for (const StringPiece piece : pieces) total_size += piece.size();
   gtl::STLStringResizeUninitialized(&result, total_size);
 
+  char *const begin = &*result.begin();
+  char *out = begin;
   for (const StringPiece piece : pieces) {
-    result.append(piece.data(), piece.size());
+    const size_t this_size = piece.size();
+    memcpy(out, piece.data(), this_size);
+    out += this_size;
   }
+  DCHECK_EQ(out, begin + result.size());
   return result;
 }
 
@@ -135,9 +150,14 @@ void AppendPieces(string *result, std::initializer_list<StringPiece> pieces) {
   }
   gtl::STLStringResizeUninitialized(result, total_size);
 
+  char *const begin = &*result->begin();
+  char *out = begin + old_size;
   for (const StringPiece piece : pieces) {
-    result->append(piece.data(), piece.size());
+    const size_t this_size = piece.size();
+    memcpy(out, piece.data(), this_size);
+    out += this_size;
   }
+  DCHECK_EQ(out, begin + result->size());
 }
 
 }  // namespace internal
@@ -152,7 +172,9 @@ void StrAppend(string *result, const AlphaNum &a, const AlphaNum &b) {
   DCHECK_NO_OVERLAP(*result, b);
   string::size_type old_size = result->size();
   gtl::STLStringResizeUninitialized(result, old_size + a.size() + b.size());
-  Append2(result, a, b);
+  char *const begin = &*result->begin();
+  char *out = Append2(begin + old_size, a, b);
+  DCHECK_EQ(out, begin + result->size());
 }
 
 void StrAppend(string *result, const AlphaNum &a, const AlphaNum &b,
@@ -163,7 +185,10 @@ void StrAppend(string *result, const AlphaNum &a, const AlphaNum &b,
   string::size_type old_size = result->size();
   gtl::STLStringResizeUninitialized(result,
                                     old_size + a.size() + b.size() + c.size());
-  Append3(result, a, b, c);
+  char *const begin = &*result->begin();
+  char *out = Append2(begin + old_size, a, b);
+  out = Append1(out, c);
+  DCHECK_EQ(out, begin + result->size());
 }
 
 void StrAppend(string *result, const AlphaNum &a, const AlphaNum &b,
@@ -175,7 +200,9 @@ void StrAppend(string *result, const AlphaNum &a, const AlphaNum &b,
   string::size_type old_size = result->size();
   gtl::STLStringResizeUninitialized(
       result, old_size + a.size() + b.size() + c.size() + d.size());
-  Append4(result, a, b, c, d);
+  char *const begin = &*result->begin();
+  char *out = Append4(begin + old_size, a, b, c, d);
+  DCHECK_EQ(out, begin + result->size());
 }
 
 }  // namespace strings
