@@ -91,8 +91,7 @@ class NodeDefBuilder {
     if (arg != nullptr) ListInput(arg, src_list);
     return *this;
   }
-  NodeDefBuilder& Input(std::vector<NodeDefBuilder::NodeOut> srcs)
-  {
+  NodeDefBuilder& Input(std::vector<NodeDefBuilder::NodeOut> srcs) {
     gtl::ArraySlice<NodeOut> src_list(srcs);
     return Input(src_list);
   }
