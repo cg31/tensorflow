@@ -91,10 +91,12 @@ class NodeDefBuilder {
     if (arg != nullptr) ListInput(arg, src_list);
     return *this;
   }
+#ifdef _MSC_VER
   NodeDefBuilder& Input(std::vector<NodeDefBuilder::NodeOut> srcs) {
     gtl::ArraySlice<NodeOut> src_list(srcs);
     return Input(src_list);
   }
+#endif
 
   // To create inputs in tests, see fake_input.h.
   NodeDefBuilder& Input(FakeInputFunctor fake_input);
