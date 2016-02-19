@@ -91,7 +91,7 @@ class DeviceBase {
  public:
   explicit DeviceBase(Env* env) : env_(env) {}
   explicit DeviceBase(Env* env, const DeviceAttributes& device_attributes)
-      : env_(env), device_attributes_(device_attributes) {}
+      : device_attributes_(device_attributes), env_(env) {}
   virtual ~DeviceBase();
 
   Env* env() const { return env_; }
