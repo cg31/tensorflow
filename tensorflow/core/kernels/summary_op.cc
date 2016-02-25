@@ -87,7 +87,7 @@ class SummaryHistoOp : public OpKernel {
     histogram::Histogram histo;
     for (int64 i = 0; i < flat.size(); i++) {
       T v = flat(i);
-      if (!std::isfinite(v)) {
+      if (!std::isfinite(double(v))) {
         c->SetStatus(
             errors::OutOfRange("Nan in summary histogram for: ", name()));
         break;
