@@ -92,7 +92,7 @@ class LRNOp : public OpKernel {
     GetBandMatrix(depth, depth_radius_, &multiplier);
 
     auto out_shaped = output->shaped<float, 2>({nodes * batch, depth});
-    Eigen::array<DimPair, 1> dims = {{DimPair(1, 0)}};
+    Eigen::array<DimPair, 1> dims{ DimPair(1, 0) };
     auto tmp = in_shaped.square().contract(multiplier, dims) * alpha_ + bias_;
     if (beta_ == 1.0f) {
       out_shaped.device(context->eigen_cpu_device()) =

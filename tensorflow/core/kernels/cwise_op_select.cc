@@ -147,7 +147,7 @@ struct BatchSelectFunctor<CPUDevice, T> {
     const int all_but_batch = then_flat_outer_dims.dimension(1);
 
 #if !defined(EIGEN_HAS_INDEX_LIST)
-    Eigen::array<Eigen::DenseIndex, 2> broadcast_dims{{ 1, all_but_batch }};
+    Eigen::array<Eigen::DenseIndex, 2> broadcast_dims{ 1, all_but_batch };
     Eigen::Tensor<Eigen::DenseIndex, 2>::Dimensions reshape_dims{{ batch, 1 }};
 #else
     Eigen::IndexList<Eigen::type2index<1>, Eigen::DenseIndex> broadcast_dims;
