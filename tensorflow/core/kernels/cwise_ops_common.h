@@ -165,8 +165,8 @@ namespace functor {
 // modestly sized.
 static bool DoInline(size_t size) { return size <= 32768; }
 
-template <typename D, typename OUT, typename RHS>
-void Assign(const D& d, OUT out, RHS rhs) {
+template <typename D, typename TOUT, typename RHS>
+void Assign(const D& d, TOUT out, RHS rhs) {
   if (DoInline(out.size())) {
     out = rhs;
   } else {
