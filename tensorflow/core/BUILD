@@ -63,6 +63,7 @@ load(
     "tf_proto_library",
     "tf_additional_lib_srcs",
     "tf_additional_stream_executor_srcs",
+    "tf_additional_test_deps",
     "tf_additional_test_srcs",
     "tf_kernel_tests_linkstatic",
 )
@@ -157,7 +158,7 @@ cc_library(
         ":lib",
         ":lib_internal",
         "//tensorflow/core/platform/default/build_config:gtest",
-    ],
+    ] + tf_additional_test_deps(),
 )
 
 tf_cuda_library(
@@ -207,6 +208,7 @@ tf_cuda_library(
         "util/saved_tensor_slice_util.h",
         "util/sparse/group_iterator.h",
         "util/sparse/sparse_tensor.h",
+        "util/tensor_format.h",
         "util/tensor_slice_reader.h",
         "util/tensor_slice_reader_cache.h",
         "util/tensor_slice_writer.h",
@@ -841,6 +843,7 @@ cc_library(
         "lib/random/weighted_picker.h",
         "lib/strings/ordered_code.h",
         "lib/strings/regexp.h",
+        "platform/denormal.h",
         "platform/platform.h",
         "platform/tensor_coding.h",
         "platform/tracing.h",

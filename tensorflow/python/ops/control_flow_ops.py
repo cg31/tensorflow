@@ -277,7 +277,23 @@ def _SwitchRefOrTensor(data, pred, name="Switch"):
     TypeError: if data is not a Tensor or IndexedSlices
   """
   data = ops.convert_to_tensor_or_indexed_slices(data, name="data")
-  with ops.device(data.device):
+  # NOTE(mrry): ops.device(None) below addresses the following scenario.
+  #
+  # Assume you execute Optimizer.apply_gradients() in a branch of a cond().
+  #
+  # 1. The update op is created inside a `with tf.device(var.device):` block
+  #    say var.device = "/job:ps/task:1".
+  #
+  # 2. Some tensor `data` is captured and a switch is created in a
+  #    `with tf.device(data.device):` block (data.device = "/job:worker_train").
+  #
+  # with tf.device("/job:ps/task:1"):
+  #  with tf.device("/job:worker_train"):
+  #    op = ...
+  #
+  # But then calling `print op.device` returns:
+  # ==> "/job:worker_train/task:1" -- a device that doesn't exist in this case!
+  with ops.device(None), ops.device(data.device):
     if isinstance(data, ops.Tensor):
       if not data.dtype.is_ref_dtype:
         return switch(data, pred, name=name)
@@ -1421,9 +1437,15 @@ class WhileContext(ControlFlowContext):
       The gradient for a loop invariant.
     """
     self.Exit()
+    shape = value.get_shape()
+    if not shape.is_fully_defined():
+      shape = None
     if self.outer_context: self.outer_context.Enter()
-    acc = constant_op.constant(0, value.dtype, name="b_acc")
+    acc = constant_op.constant(0, value.dtype, shape=shape, name="b_acc")
+    if not shape:
+      acc._shape = value.get_shape()  # pylint: disable=protected-access
     if self.outer_context: self.outer_context.Exit()
+
     self.Enter()
     self.AddName(acc.name)
     enter_acc = _Enter(acc, self._name, is_constant=False,

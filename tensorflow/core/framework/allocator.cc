@@ -27,16 +27,18 @@ void AllocatorStats::Clear() {
   this->bytes_in_use = 0;
   this->max_bytes_in_use = 0;
   this->max_alloc_size = 0;
+  this->bytes_limit = 0;
 }
 
 string AllocatorStats::DebugString() const {
   return strings::Printf(
+      "Limit:        %20lld\n"
       "InUse:        %20lld\n"
       "MaxInUse:     %20lld\n"
       "NumAllocs:    %20lld\n"
       "MaxAllocSize: %20lld\n",
-      this->bytes_in_use, this->max_bytes_in_use, this->num_allocs,
-      this->max_alloc_size);
+      this->bytes_limit, this->bytes_in_use, this->max_bytes_in_use,
+      this->num_allocs, this->max_alloc_size);
 }
 
 Allocator::~Allocator() {}
@@ -84,6 +86,10 @@ class CPUAllocator : public Allocator {
   void GetStats(AllocatorStats* stats) override {
     mutex_lock l(mu_);
     *stats = stats_;
+  }
+
+  size_t AllocatedSizeSlow(void* ptr) override {
+    return port::MallocExtension_GetAllocatedSize(ptr);
   }
 
  private:

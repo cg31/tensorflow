@@ -45,6 +45,11 @@ struct AllocatorStats {
   int64 max_bytes_in_use;  // The maximum bytes in use.
   int64 max_alloc_size;    // The max single allocation seen.
 
+  // The upper limit what the allocator can allocate, if such a limit
+  // is known. Certain allocator may return 0 to indicate the limit is
+  // unknown.
+  int64 bytes_limit;
+
   AllocatorStats() { Clear(); }
 
   void Clear();
@@ -162,6 +167,19 @@ class Allocator {
   // allocated by this allocator.
   virtual int64 AllocationId(void* ptr) { return 0; }
 
+  // Returns the allocated size of the buffer at 'ptr' if known,
+  // otherwise returns 0. This method can be called when
+  // TracksAllocationSizes() is false, but can be extremely slow.
+  //
+  // REQUIRES: 'ptr!=nullptr' and points to a buffer previously
+  // allocated by this allocator.
+  virtual size_t AllocatedSizeSlow(void* ptr) {
+    if (TracksAllocationSizes()) {
+      return AllocatedSize(ptr);
+    }
+    return 0;
+  }
+
   // is_simple<T>::value if T[] can be safely constructed and destructed
   // without running T() and ~T().  We do not use std::is_trivial<T>
   // directly because std::complex<float> is not trival but its array
@@ -249,7 +267,8 @@ struct AllocatorAttributes {
   bool nic_compatible() const { return value & (0x1 << 1); }
   void set_gpu_compatible(bool v) { value |= (static_cast<int>(v) << 2); }
   bool gpu_compatible() const { return value & (0x1 << 2); }
-
+  void set_track_sizes(bool v) { value |= (static_cast<int>(v) << 3); }
+  bool track_sizes() const { return value & (0x1 << 3); }
   void Merge(AllocatorAttributes other) { value |= other.value; }
 
   // NOTE: The upper 8 bits of the value are reserved for
