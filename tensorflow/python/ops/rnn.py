@@ -293,9 +293,11 @@ def bidirectional_rnn(cell_fw, cell_bw, inputs,
     scope: VariableScope for the created subgraph; defaults to "BiRNN"
 
   Returns:
-    A set of output `Tensors` where:
+    A tuple (outputs, output_state_fw, output_state_bw) where:
       outputs is a length T list of outputs (one for each input), which
       are depth-concatenated forward and backward outputs
+      output_state_fw is the final state of the forward rnn
+      output_state_bw is the final state of the backward rnn
 
   Raises:
     TypeError: If "cell_fw" or "cell_bw" is not an instance of RNNCell.
@@ -314,23 +316,24 @@ def bidirectional_rnn(cell_fw, cell_bw, inputs,
   name = scope or "BiRNN"
   # Forward direction
   with vs.variable_scope(name + "_FW") as fw_scope:
-    output_fw, _ = rnn(cell_fw, inputs, initial_state_fw, dtype,
+    output_fw, output_state_fw = rnn(cell_fw, inputs, initial_state_fw, dtype,
                        sequence_length, scope=fw_scope)
 
   # Backward direction
   with vs.variable_scope(name + "_BW") as bw_scope:
-    tmp, _ = rnn(cell_bw, _reverse_seq(inputs, sequence_length),
+    tmp, output_state_bw = rnn(cell_bw, _reverse_seq(inputs, sequence_length),
                  initial_state_bw, dtype, sequence_length, scope=bw_scope)
   output_bw = _reverse_seq(tmp, sequence_length)
   # Concat each of the forward/backward outputs
   outputs = [array_ops.concat(1, [fw, bw])
              for fw, bw in zip(output_fw, output_bw)]
 
-  return outputs
+  return (outputs, output_state_fw, output_state_bw)
 
 
 def dynamic_rnn(cell, inputs, sequence_length, initial_state=None, dtype=None,
-                parallel_iterations=None, time_major=False, scope=None):
+                parallel_iterations=None, swap_memory=False, time_major=False,
+                scope=None):
   """Creates a recurrent neural network specified by RNNCell "cell".
 
   This function is functionally identical to the function `rnn` above, but
@@ -361,6 +364,8 @@ def dynamic_rnn(cell, inputs, sequence_length, initial_state=None, dtype=None,
       and can be run in parallel, will be.  This parameter trades off
       time for space.  Values >> 1 use more memory but take less time,
       while smaller values use less memory but computations take longer.
+    swap_memory: Swap the tensors produced in forward inference but needed
+      for back prop from GPU to CPU.
     time_major: The shape format of the `inputs` and `outputs` Tensors.
       If true, these `Tensors` must be shaped `[max_time, batch_size, depth]`.
       If false, these `Tensors` must be shaped `[batch_size, max_time, depth]`.
@@ -429,7 +434,8 @@ def dynamic_rnn(cell, inputs, sequence_length, initial_state=None, dtype=None,
 
     (outputs, final_state) = _dynamic_rnn_loop(
         cell, inputs, state, sequence_length,
-        parallel_iterations=parallel_iterations)
+        parallel_iterations=parallel_iterations,
+        swap_memory=swap_memory)
 
     # Outputs of _dynamic_rnn_loop are always shaped [time, batch, depth].
     # If we are performing batch-major calculations, transpose output back
@@ -441,7 +447,7 @@ def dynamic_rnn(cell, inputs, sequence_length, initial_state=None, dtype=None,
 
 
 def _dynamic_rnn_loop(cell, inputs, initial_state, sequence_length,
-                      parallel_iterations):
+                      parallel_iterations, swap_memory):
   """Internal implementation of Dynamic RNN.
 
   Args:
@@ -450,6 +456,7 @@ def _dynamic_rnn_loop(cell, inputs, initial_state, sequence_length,
     initial_state: A `Tensor` of shape [batch_size, depth].
     sequence_length: An `int32` `Tensor` of shape [batch_size].
     parallel_iterations: Positive Python int.
+    swap_memory: A Python boolean
 
   Returns:
     Tuple (final_outputs, final_state).
@@ -465,6 +472,9 @@ def _dynamic_rnn_loop(cell, inputs, initial_state, sequence_length,
   input_shape = array_ops.shape(inputs)
   (time_steps, batch_size, unused_depth) = array_ops.unpack(input_shape, 3)
 
+  inputs_got_shape = inputs.get_shape().with_rank(3)
+  (const_time_steps, const_batch_size, const_depth) = inputs_got_shape.as_list()
+
   # Prepare dynamic conditional copying of state & output
   zero_output = array_ops.zeros(
       array_ops.pack([batch_size, cell.output_size]), inputs.dtype)
@@ -473,18 +483,34 @@ def _dynamic_rnn_loop(cell, inputs, initial_state, sequence_length,
 
   time = array_ops.constant(0, dtype=dtypes.int32, name="time")
 
+  with ops.op_scope([], "dynamic_rnn") as scope:
+    base_name = scope
+
   output_ta = tensor_array_ops.TensorArray(
       dtype=inputs.dtype, size=time_steps,
-      tensor_array_name="dynamic_rnn_output")
+      tensor_array_name=base_name + "output")
 
   input_ta = tensor_array_ops.TensorArray(
       dtype=inputs.dtype, size=time_steps,
-      tensor_array_name="dynamic_rnn_input")
+      tensor_array_name=base_name + "input")
 
   input_ta = input_ta.unpack(inputs)
 
   def _time_step(time, state, output_ta_t):
+    """Take a time step of the dynamic RNN.
+
+    Args:
+      time: int32 scalar Tensor.
+      state: Vector.
+      output_ta_t: `TensorArray`, the output with existing flow.
+
+    Returns:
+      The tuple (time + 1, new_state, output_ta_t with updated flow).
+    """
+
     input_t = input_ta.read(time)
+    # Restore some shape information
+    input_t.set_shape([const_batch_size, const_depth])
 
     (output, new_state) = _rnn_step(
         time, sequence_length, min_sequence_length, max_sequence_length,
@@ -498,8 +524,12 @@ def _dynamic_rnn_loop(cell, inputs, initial_state, sequence_length,
       cond=lambda time, _1, _2: time < time_steps,
       body=_time_step,
       loop_vars=(time, state, output_ta),
-      parallel_iterations=parallel_iterations)
+      parallel_iterations=parallel_iterations,
+      swap_memory=swap_memory)
 
   final_outputs = output_final_ta.pack()
+  # Restore some shape information
+  final_outputs.set_shape([
+      const_time_steps, const_batch_size, cell.output_size])
 
   return (final_outputs, final_state)

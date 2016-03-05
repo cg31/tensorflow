@@ -5,8 +5,6 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
-exports_files(["LICENSE"])
-
 load(
     "//tensorflow:tensorflow.bzl",
     "tf_cc_test",
@@ -33,6 +31,7 @@ cc_library(
 cc_library(
     name = "bounds_check",
     hdrs = ["bounds_check.h"],
+    visibility = ["//visibility:private"],
     deps = [
         "//tensorflow/core:framework",
         "//third_party/eigen3",
@@ -335,6 +334,19 @@ tf_kernel_library(
     ],
 )
 
+tf_kernel_library(
+    name = "ctc_ops",
+    prefix = "ctc",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:ctc_ops_op_lib",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core/util/ctc:ctc_beam_search_lib",
+        "//tensorflow/core/util/ctc:ctc_loss_calculator_lib",
+    ],
+)
+
 tf_cc_test(
     name = "control_flow_ops_test",
     deps = [
@@ -364,6 +376,7 @@ tf_kernel_libraries(
         "tensor_array_ops",
     ],
     deps = [
+        ":bounds_check",
         ":concat_lib",
         ":fifo_queue",
         ":initializable_lookup_table",
@@ -463,6 +476,7 @@ tf_kernel_libraries(
         "whole_file_read_ops",
     ],
     deps = [
+        ":ops_util",
         ":reader_base",
         ":save_restore_tensor",
         "//tensorflow/core:framework",
@@ -511,14 +525,12 @@ tf_kernel_libraries(
         "sample_distorted_bounding_box_op",
     ],
     deps = [
-        "//third_party/eigen3",
-        "//tensorflow/core:protos_all_cc",
         "//tensorflow/core:framework",
+        "//tensorflow/core:image_ops_op_lib",
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
-        # TODO(josh11b): Merge these ops libs
-        "//tensorflow/core:image_ops_op_lib",
-        "//tensorflow/core:attention_ops_op_lib",
+        "//tensorflow/core:protos_all_cc",
+        "//third_party/eigen3",
     ],
 )
 
@@ -598,10 +610,8 @@ tf_kernel_libraries(
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:lib_internal",
-        "//tensorflow/core:protos_all_cc",
-        # TODO(josh11b): Merge these ops libs?
-        "//tensorflow/core:summary_ops_op_lib",
         "//tensorflow/core:logging_ops_op_lib",
+        "//tensorflow/core:protos_all_cc",
     ],
 )
 
@@ -689,6 +699,19 @@ tf_kernel_library(
     deps = [
         ":conv_2d",
         ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:nn_ops_op_lib",
+    ],
+)
+
+tf_kernel_library(
+    name = "depthwise_conv_op",
+    prefix = "depthwise_conv_op",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:nn_ops_op_lib",
@@ -713,6 +736,7 @@ tf_kernel_libraries(
     deps = [
         ":conv_2d",
         ":conv_ops",
+        ":depthwise_conv_op",
         ":ops_util",
         ":pooling_ops",
         "//tensorflow/core:framework",
@@ -981,6 +1005,7 @@ filegroup(
         "example_parsing_ops.cc",
         "fill_functor.h",
         "gather_op.cc",
+        "gather_op.h",
         "identity_op.cc",
         "identity_op.h",
         "matmul_op.cc",
@@ -1016,6 +1041,7 @@ filegroup(
     srcs = [
         "argmax_op.h",
         "avgpooling_op.h",
+        "batch_norm_op.h",
         "control_flow_ops.h",
         "conv_2d.h",
         "maxpooling_op.h",
@@ -1039,7 +1065,9 @@ filegroup(
     srcs = [
         "argmax_op.cc",
         "avgpooling_op.cc",
+        "batch_norm_op.cc",
         "bcast_ops.cc",
+        "check_numerics_op.cc",
         "control_flow_ops.cc",
         "conv_2d.h",
         "conv_ops.cc",
@@ -1068,6 +1096,7 @@ filegroup(
 filegroup(
     name = "android_extended_ops_group2",
     srcs = [
+        "ctc_decoder_ops.cc",
         "dynamic_stitch_op.cc",
         "in_topk_op.cc",
         "lrn_op.cc",

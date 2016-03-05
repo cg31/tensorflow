@@ -295,7 +295,7 @@ def _SwitchRefOrTensor(data, pred, name="Switch"):
   #
   # But then calling `print op.device` returns:
   # ==> "/job:worker_train/task:1" -- a device that doesn't exist in this case!
-  with ops.device(None), ops.device(data.device):
+  with ops.colocate_with(data):
     if isinstance(data, ops.Tensor):
       if not data.dtype.is_ref_dtype:
         return switch(data, pred, name=name)
@@ -530,6 +530,7 @@ class GradLoopState(object):
       outer_grad_ctxt.Enter()
       self._grad_context = WhileContext(forward_ctxt.parallel_iterations,
                                         forward_ctxt.back_prop,
+                                        forward_ctxt.swap_memory,
                                         forward_ctxt.name)
       real_cnt = outer_grad_state.AddBackPropAccumulatedValue(history_cnt, cnt)
       self._grad_index = self._grad_context.AddBackPropCounter(real_cnt)
@@ -538,6 +539,7 @@ class GradLoopState(object):
       if outer_forward_ctxt: outer_forward_ctxt.Enter()
       self._grad_context = WhileContext(forward_ctxt.parallel_iterations,
                                         forward_ctxt.back_prop,
+                                        forward_ctxt.swap_memory,
                                         forward_ctxt.name)
       self._grad_index = self._grad_context.AddBackPropCounter(cnt)
       if outer_forward_ctxt: outer_forward_ctxt.Exit()
@@ -642,13 +644,15 @@ class GradLoopState(object):
     enter_acc = self.forward_context.AddValue(acc)
 
     # Add the stack_push op in the context of value.op.
+    swap_enabled = self.forward_context.swap_memory
     value_ctxt = value.op._get_control_flow_context()
     if _IsLoopExit(value.op):
       value_ctxt = value_ctxt.outer_context
     if value_ctxt == self.forward_context:
       # value is not nested in the forward context.
       self.forward_context.Enter()
-      push = gen_data_flow_ops._stack_push(enter_acc, value)
+      push = gen_data_flow_ops._stack_push(enter_acc, value,
+                                           swap_memory=swap_enabled)
       self.forward_context.Exit()
       # Protect stack push and order it before forward_index.
       self.forward_index.op._add_control_input(push.op)
@@ -659,12 +663,14 @@ class GradLoopState(object):
         # The special case for creating a zero tensor for a dead
         # branch of a switch. See ControlFlowState.ZerosLike().
         value_ctxt.outer_context.Enter()
-        push = gen_data_flow_ops._stack_push(enter_acc, value)
+        push = gen_data_flow_ops._stack_push(enter_acc, value,
+                                             swap_memory=swap_enabled)
         value_ctxt.outer_context.Exit()
         push.op._set_control_flow_context(value_ctxt)
       else:
         value_ctxt.Enter()
-        push = gen_data_flow_ops._stack_push(enter_acc, value)
+        push = gen_data_flow_ops._stack_push(enter_acc, value,
+                                             swap_memory=swap_enabled)
         value_ctxt.Exit()
       # Protect stack push and order it before forward_sync.
       self.forward_sync._add_control_input(push.op)
@@ -1242,11 +1248,12 @@ def cond(pred, fn1, fn2, name=None):
 class WhileContext(ControlFlowContext):
   """The context for the loop construct."""
 
-  def __init__(self, parallel_iterations, back_prop, name):
+  def __init__(self, parallel_iterations, back_prop, swap_memory, name):
     ControlFlowContext.__init__(self)
     self._name = ops.get_default_graph().unique_name(name)
     self._parallel_iterations = parallel_iterations
     self._back_prop = back_prop
+    self._swap_memory = swap_memory
     # We use this node to control constants created by the pred lambda.
     self._pivot_for_pred = None
     # We use this node to control constants created by the body lambda.
@@ -1270,6 +1277,11 @@ class WhileContext(ControlFlowContext):
   def back_prop(self):
     """True iff backprop is enabled for this While loop."""
     return self._back_prop
+
+  @property
+  def swap_memory(self):
+    """True iff GPU-CPU memory swap is enabled for this While loop."""
+    return self._swap_memory
 
   @property
   def pivot(self):
@@ -1540,7 +1552,7 @@ class WhileContext(ControlFlowContext):
 
 
 def While(cond, body, loop_vars, parallel_iterations=10, back_prop=True,
-          name=None):
+          swap_memory=False, name=None):
   """Repeat `body` while the condition `cond` is true.
 
   `cond` is a function taking a list of tensors and returning a boolean scalar
@@ -1560,6 +1572,7 @@ def While(cond, body, loop_vars, parallel_iterations=10, back_prop=True,
     loop_vars: The list of variable input tensors.
     parallel_iterations: The number of iterations allowed to run in parallel.
     back_prop: Whether backprop is enabled for this while loop.
+    swap_memory: Whether GPU-CPU memory swap is enabled for this loop.
     name: Optional name prefix for the returned tensors.
 
   Returns:
@@ -1585,7 +1598,7 @@ def While(cond, body, loop_vars, parallel_iterations=10, back_prop=True,
     if not callable(body):
       raise TypeError("body must be callable.")
 
-    context = WhileContext(parallel_iterations, back_prop, name)
+    context = WhileContext(parallel_iterations, back_prop, swap_memory, name)
     context.Enter()
     result = context.BuildLoop(cond, body, loop_vars)
     context.Exit()
@@ -1656,7 +1669,7 @@ def with_dependencies(dependencies, output_tensor, name=None):
   """
   with ops.op_scope(dependencies + [output_tensor], name,
                     "control_dependency") as name:
-    with ops.device(output_tensor.device):
+    with ops.colocate_with(output_tensor):
       with ops.control_dependencies(dependencies):
         output_tensor = ops.convert_to_tensor_or_indexed_slices(output_tensor)
         if isinstance(output_tensor, ops.Tensor):
@@ -1716,6 +1729,7 @@ def group(*inputs, **kwargs):
       # 1-level tree. The root node is the returned NoOp node.
       (dev, deps), = ops_on_device.items()
       return _GroupControlDeps(dev, deps, name=name)
+
     # 2-level tree. The root node is the returned NoOp node.
     # deps contains 1 NoOp node for each device.
     deps = []
@@ -1725,7 +1739,9 @@ def group(*inputs, **kwargs):
       return "" if dev is None else dev
     for dev in sorted(six.iterkeys(ops_on_device), key=device_key):
       deps.append(_GroupControlDeps(dev, ops_on_device[dev]))
-    return _GroupControlDeps(None, deps, name=name)
+
+    with ops.control_dependencies(deps):
+      return no_op(name=name)
 
 
 def tuple(tensors, name=None, control_inputs=None):
@@ -1919,13 +1935,14 @@ def map_fn(fn, elems, dtype=None, name=None):
     dtype = dtype if dtype else elems.dtype
 
     # Convert elems to tensor array.
-    elems_ta = tensor_array_ops.TensorArray(dtype=elems.dtype, size=0,
-                                            dynamic_size=True)
+    n = array_ops.shape(elems)[0]
+    elems_ta = tensor_array_ops.TensorArray(dtype=elems.dtype, size=n,
+                                            dynamic_size=False)
     elems_ta = elems_ta.unpack(elems)
 
-    n = elems_ta.size()
     i = constant_op.constant(0)
-    acc_ta = tensor_array_ops.TensorArray(dtype=dtype, size=n)
+    acc_ta = tensor_array_ops.TensorArray(dtype=dtype, size=n,
+                                          dynamic_size=False)
     def compute(i, a):
       a = a.write(i, fn(elems_ta.read(i)))
       i = math_ops.add(i, 1)
@@ -2070,14 +2087,14 @@ def case(pred_fn_pairs, default, exclusive=False, name="case"):
           logging_ops.Assert(condition=at_most_one_true_condition,
                              data=error_msg, summarize=len(preds))]):
         prev_case_seq = None
-        for i, (cp, fn) in enumerate(zip(case_preds, fns)[::-1]):
+        for i, (cp, fn) in enumerate(list(zip(case_preds, fns))[::-1]):
           prev_case_seq = cond(
               cp, fn,
               default if i == 0 else lambda: prev_case_seq,
               name="If_%d" % i)
     else:
       prev_case_seq = None
-      for i, (cp, fn) in enumerate(zip(case_preds, fns)[::-1]):
+      for i, (cp, fn) in enumerate(list(zip(case_preds, fns))[::-1]):
         prev_case_seq = cond(
             cp, fn,
             default if i == 0 else lambda: prev_case_seq,
