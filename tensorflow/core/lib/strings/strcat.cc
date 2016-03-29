@@ -81,6 +81,8 @@ static void Append4(string *out, const AlphaNum &x1, const AlphaNum &x2,
   out->append(x4.data(), x4.size());
 }
 
+string StrCat(const AlphaNum &a) { return string(a.data(), a.size()); }
+
 string StrCat(const AlphaNum &a, const AlphaNum &b) {
   string result;
   Append2(&result, a, b);

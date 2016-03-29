@@ -82,7 +82,7 @@ See also `tuple` and `with_dependencies`.
 ##### Args:
 
 
-*  <b>`*inputs`</b>: One or more tensors to group.
+*  <b>`*inputs`</b>: Zero or more tensors to group.
 *  <b>`**kwargs`</b>: Optional parameters to pass when constructing the NodeDef.
 *  <b>`name`</b>: A name for this operation (optional).
 
@@ -93,8 +93,7 @@ See also `tuple` and `with_dependencies`.
 ##### Raises:
 
 
-*  <b>`ValueError`</b>: If an unknown keyword argument is provided, or if there are
-              no inputs.
+*  <b>`ValueError`</b>: If an unknown keyword argument is provided.
 
 
 - - -
@@ -152,13 +151,13 @@ the same non-zero number and type of outputs.
 
 
 *  <b>`pred`</b>: A scalar determining whether to return the result of `fn1` or `fn2`.
-*  <b>`fn1`</b>: The function to be performed if pred is true.
-*  <b>`fn2`</b>: The function to be performed if pref is false.
+*  <b>`fn1`</b>: The callable to be performed if pred is true.
+*  <b>`fn2`</b>: The callable to be performed if pref is false.
 *  <b>`name`</b>: Optional name prefix for the returned tensors.
 
 ##### Returns:
 
-  Tensors returned by the call to either `fn1` or `fn2`. If the functions
+  Tensors returned by the call to either `fn1` or `fn2`. If the callables
   return a singleton list, the element is extracted from the list.
 
 ##### Raises:
@@ -190,10 +189,10 @@ Create a case operation.
 
 The `pred_fn_pairs` parameter is a dict or list of pairs of size N.
 Each pair contains a boolean scalar tensor and a python callable that
-creates the tensors to be returned if the boolean evaluates to True. `default`
-is a callable generating a list of tensors. All the callables in
-`pred_fn_pairs` as well as `default` should return the same number and types
-of tensors.
+creates the tensors to be returned if the boolean evaluates to True.
+`default` is a callable generating a list of tensors. All the callables
+in `pred_fn_pairs` as well as `default` should return the same number
+and types of tensors.
 
 If `exclusive==True`, all predicates are evaluated, and a logging operation
 with an error is returned if more than one of the predicates evaluates to
@@ -273,7 +272,7 @@ map-reduce programming patterns.
 The map operator on the list of tensors resulted from unpacking `elems`
 along the first dimension.
 
-This map operator repeatedly applies the function `fn` to a sequence of
+This map operator repeatedly applies the callable `fn` to a sequence of
 elements from first to last. The elements are made of the tensors unpacked
 from `elems`. `dtype` is the data type of the return value of `fn`. Users
 must provide `dtype` if it is different from the data type of `elems`.
@@ -284,12 +283,12 @@ of the result tensor is `[len(values)] + fn(values[0]).shape`.
 ##### Args:
 
 
-*  <b>`fn`</b>: The function to be performed.
+*  <b>`fn`</b>: The callable to be performed.
 *  <b>`elems`</b>: A tensor to be unpacked to apply `fn`.
 *  <b>`dtype`</b>: (optional) The output type of `fn`.
 *  <b>`parallel_iterations`</b>: (optional) The number of iterations allowed to run
                        in parallel.
-*  <b>`back_prop`</b>: (optional) True enables backprop support.
+*  <b>`back_prop`</b>: (optional) True enables back propagation.
 *  <b>`swap_memory`</b>: (optional) True enables GPU-CPU memory swapping.
 *  <b>`name`</b>: (optional) Name prefix for the returned tensors.
 
@@ -308,6 +307,7 @@ of the result tensor is `[len(values)] + fn(values[0]).shape`.
   ```python
   elems = [1, 2, 3, 4, 5, 6]
   squares = map_fn(lambda x: x * x, elems)
+  # squares == [1, 4, 9, 16, 25, 36]
   ```
 
 
@@ -318,25 +318,25 @@ of the result tensor is `[len(values)] + fn(values[0]).shape`.
 The foldl operator on the list of tensors resulted from unpacking `elems`
 along the first dimension.
 
-This foldl operator repeatedly applies the function `fn` to a sequence
+This foldl operator repeatedly applies the callable `fn` to a sequence
 of elements from first to last. The elements are made of the tensors
-unpacked from `elems` on dimension 0. The function fn takes two tensors as
+unpacked from `elems` on dimension 0. The callable fn takes two tensors as
 arguments. The first argument is the accumulated value computed from the
 preceding invocation of fn. If `initializer` is None, `elems` must contain
 at least one element, and its first element is used as the initializer.
 
 Suppose that `elems` is unpacked into `values`, a list of tensors. The shape
-of the result tensor is `[len(values)] + fn(initializer, values[0]).shape`.
+of the result tensor is fn(initializer, values[0]).shape`.
 
 ##### Args:
 
 
-*  <b>`fn`</b>: The function to be performed.
+*  <b>`fn`</b>: The callable to be performed.
 *  <b>`elems`</b>: A tensor to be unpacked on dimension 0.
 *  <b>`initializer`</b>: (optional) The initial value for the accumulator.
 *  <b>`parallel_iterations`</b>: (optional) The number of iterations allowed to run
                        in parallel.
-*  <b>`back_prop`</b>: (optional) True enables backprop support.
+*  <b>`back_prop`</b>: (optional) True enables back propagation.
 *  <b>`swap_memory`</b>: (optional) True enables GPU-CPU memory swapping.
 *  <b>`name`</b>: (optional) Name prefix for the returned tensors.
 
@@ -355,6 +355,7 @@ of the result tensor is `[len(values)] + fn(initializer, values[0]).shape`.
   ```python
   elems = [1, 2, 3, 4, 5, 6]
   sum = foldl(lambda a, x: a + x, elems)
+  # sum == 21
   ```
 
 
@@ -365,25 +366,25 @@ of the result tensor is `[len(values)] + fn(initializer, values[0]).shape`.
 The foldr operator on the list of tensors resulted from unpacking `elems`
 along the first dimension.
 
-This foldr operator repeatedly applies the function `fn` to a sequence
+This foldr operator repeatedly applies the callable `fn` to a sequence
 of elements from last to first. The elements are made of the tensors
-unpacked from `elems`. The function fn takes two tensors as arguments.
+unpacked from `elems`. The callable fn takes two tensors as arguments.
 The first argument is the accumulated value computed from the preceding
 invocation of fn. If `initializer` is None, `elems` must contain at least
 one element, and its first element is used as the initializer.
 
 Suppose that `elems` is unpacked into `values`, a list of tensors. The shape
-of the result tensor is `[len(values)] + fn(initializer, values[0]).shape`.
+of the result tensor is `fn(initializer, values[0]).shape`.
 
 ##### Args:
 
 
-*  <b>`fn`</b>: The function to be performed.
+*  <b>`fn`</b>: The callable to be performed.
 *  <b>`elems`</b>: A tensor that is unpacked into a sequence of tensors to apply `fn`.
 *  <b>`initializer`</b>: (optional) The initial value for the accumulator.
 *  <b>`parallel_iterations`</b>: (optional) The number of iterations allowed to run
                        in parallel.
-*  <b>`back_prop`</b>: (optional) True enables backprop support.
+*  <b>`back_prop`</b>: (optional) True enables back propagation.
 *  <b>`swap_memory`</b>: (optional) True enables GPU-CPU memory swapping.
 *  <b>`name`</b>: (optional) Name prefix for the returned tensors.
 
@@ -402,6 +403,55 @@ of the result tensor is `[len(values)] + fn(initializer, values[0]).shape`.
   ```python
   elems = [1, 2, 3, 4, 5, 6]
   sum = foldr(lambda a, x: a + x, elems)
+  # sum == 21
+  ```
+
+
+- - -
+
+### `tf.scan(fn, elems, initializer=None, parallel_iterations=10, back_prop=True, swap_memory=False, name=None)` {#scan}
+
+The scan operator on the list of tensors resulted from unpacking `elems`
+along the first dimension.
+
+This scan operator repeatedly applies the callable `fn` to a sequence
+of elements from first to last. The elements are made of the tensors
+unpacked from `elems` on dimension 0. The callable fn takes two tensors as
+arguments. The first argument is the accumulated value computed from the
+preceding invocation of fn. If `initializer` is None, `elems` must contain
+at least one element, and its first element is used as the initializer.
+
+Suppose that `elems` is unpacked into `values`, a list of tensors. The shape
+of the result tensor is `[len(values)] + fn(initializer, values[0]).shape`.
+
+##### Args:
+
+
+*  <b>`fn`</b>: The callable to be performed.
+*  <b>`elems`</b>: A tensor to be unpacked on dimension 0.
+*  <b>`initializer`</b>: (optional) The initial value for the accumulator.
+*  <b>`parallel_iterations`</b>: (optional) The number of iterations allowed to run
+                       in parallel.
+*  <b>`back_prop`</b>: (optional) True enables back propagation.
+*  <b>`swap_memory`</b>: (optional) True enables GPU-CPU memory swapping.
+*  <b>`name`</b>: (optional) Name prefix for the returned tensors.
+
+##### Returns:
+
+  A tensor that packs the results of applying `fn` to the list of tensors
+  unpacked from `elems`, from first to last.
+
+##### Raises:
+
+
+*  <b>`TypeError`</b>: if `fn` is not callable.
+
+##### Example:
+
+  ```python
+  elems = [1, 2, 3, 4, 5, 6]
+  sum = scan(lambda a, x: a + x, elems)
+  # sum == [1, 3, 6, 10, 15, 21]
   ```
 
 
@@ -522,7 +572,7 @@ Returns the truth value of (x < y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
 *  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
@@ -540,7 +590,7 @@ Returns the truth value of (x <= y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
 *  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
@@ -558,7 +608,7 @@ Returns the truth value of (x > y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
 *  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 
@@ -576,7 +626,7 @@ Returns the truth value of (x >= y) element-wise.
 ##### Args:
 
 
-*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`.
+*  <b>`x`</b>: A `Tensor`. Must be one of the following types: `float32`, `float64`, `int32`, `int64`, `uint8`, `int16`, `int8`, `uint16`, `half`.
 *  <b>`y`</b>: A `Tensor`. Must have the same type as `x`.
 *  <b>`name`</b>: A name for the operation (optional).
 

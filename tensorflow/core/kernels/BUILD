@@ -54,6 +54,7 @@ cc_library(
     name = "conv_2d",
     hdrs = ["conv_2d.h"],
     deps = [
+        ":eigen_helpers",
         "//tensorflow/core:framework",
         "//third_party/eigen3",
     ],
@@ -117,6 +118,7 @@ cc_library(
 
 tf_cc_test(
     name = "ops_util_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     deps = [
         ":ops_util",
@@ -215,6 +217,24 @@ cc_header_only_library(
 )
 
 cc_library(
+    name = "eigen_helpers",
+    hdrs = [
+        "eigen_activations.h",
+        "eigen_attention.h",
+        "eigen_backward_cuboid_convolutions.h",
+        "eigen_backward_spatial_convolutions.h",
+        "eigen_cuboid_convolution.h",
+        "eigen_patch_3d.h",
+        "eigen_pooling.h",
+        "eigen_softmax.h",
+        "eigen_spatial_convolutions.h",
+    ],
+    deps = [
+        "//third_party/eigen3",
+    ],
+)
+
+cc_library(
     name = "image_resizer_state",
     hdrs = ["image_resizer_state.h"],
     visibility = ["//visibility:private"],
@@ -242,6 +262,7 @@ tf_kernel_libraries(
         "edit_distance_op",
         "gather_op",
         "identity_op",
+        "immutable_constant_op",
         "listdiff_op",
         "mirror_pad_op",
         "one_hot_op",
@@ -279,21 +300,128 @@ tf_kernel_libraries(
     ],
 )
 
-tf_cc_tests(
+tf_cc_test(
+    name = "concat_op_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
-    tests = [
-        "concat_op_test",
-        "constant_op_test",
-        "gather_op_test",
-        "identity_op_test",
-        "reverse_op_test",
-        "slice_op_test",
-        "unique_op_test",
-    ],
     deps = [
-        ":array",
+        ":concat_op",
         ":ops_testutil",
         ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "constant_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":constant_op",
+        ":ops_testutil",
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "gather_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":gather_op",
+        ":ops_testutil",
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "identity_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":identity_op",
+        ":ops_testutil",
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "reverse_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":reverse_op",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "slice_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":slice_op",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "unique_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":unique_op",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:core_cpu_internal",
         "//tensorflow/core:framework",
@@ -345,6 +473,7 @@ cc_library(
 
 tf_cc_test(
     name = "range_sampler_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     deps = [
         ":range_sampler",
@@ -380,6 +509,7 @@ tf_kernel_library(
 
 tf_cc_test(
     name = "control_flow_ops_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     deps = [
         ":control_flow_ops",
@@ -429,6 +559,7 @@ tf_kernel_libraries(
 )
 
 tf_cc_tests(
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     tests = [
         "dynamic_partition_op_test",
@@ -520,6 +651,7 @@ tf_kernel_libraries(
 )
 
 tf_cc_tests(
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     tests = [
         "restore_op_test",
@@ -544,12 +676,12 @@ tf_kernel_libraries(
     name = "image",
     prefixes = [
         "adjust_contrast_op",
-        "attention_ops",
         "colorspace_op",
         "decode_jpeg_op",
         "decode_png_op",
         "draw_bounding_box_op",
         "encode_jpeg_op",
+        "attention_ops",
         "encode_png_op",
         "random_crop_op",
         "resize_area_op",
@@ -559,6 +691,7 @@ tf_kernel_libraries(
         "sample_distorted_bounding_box_op",
     ],
     deps = [
+        ":eigen_helpers",
         ":image_resizer_state",
         "//tensorflow/core:framework",
         "//tensorflow/core:image_ops_op_lib",
@@ -566,6 +699,28 @@ tf_kernel_libraries(
         "//tensorflow/core:lib_internal",
         "//tensorflow/core:protos_all_cc",
         "//third_party/eigen3",
+    ],
+)
+
+tf_cc_tests(
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    tests = [
+        "eigen_activations_test",
+        "eigen_attention_test",
+        "eigen_backward_spatial_convolutions_test",
+        "eigen_pooling_test",
+        "eigen_softmax_test",
+        "eigen_spatial_convolutions_test",
+    ],
+    deps = [
+        ":eigen_helpers",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
     ],
 )
 
@@ -653,6 +808,7 @@ tf_kernel_libraries(
 )
 
 tf_cc_tests(
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     tests = [
         "logging_ops_test",
@@ -703,19 +859,12 @@ tf_kernel_libraries(
     ],
 )
 
-tf_cc_tests(
+tf_cc_test(
+    name = "cast_op_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
-    tests = [
-        "cast_op_test",
-        "cross_op_test",
-        "cwise_ops_test",
-        "matmul_op_test",
-        "reduction_ops_test",
-        "segment_reduction_ops_test",
-        "sparse_matmul_op_test",
-    ],
     deps = [
-        ":math",
+        ":cast_op",
         ":ops_testutil",
         ":ops_util",
         "//tensorflow/core:core_cpu",
@@ -723,6 +872,142 @@ tf_cc_tests(
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
         "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "cross_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":cross_op",
+        ":ops_testutil",
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "cwise_ops_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":cwise_op",
+        ":ops_testutil",
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "matmul_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":matmul_op",
+        ":ops_testutil",
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "reduction_ops_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":reduction_ops",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "segment_reduction_ops_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":segment_reduction_ops",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "sparse_matmul_op_test",
+    size = "small",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":sparse_matmul_op",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "immutable_constant_op_test",
+    linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
+    deps = [
+        ":array",
+        ":immutable_constant_op",
+        ":matmul_op",
+        ":ops_testutil",
+        ":ops_util",
+        ":random_shuffle_op",
+        "//tensorflow/cc:cc_ops",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:direct_session",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:ops",
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
         "//tensorflow/core:testlib",
@@ -758,6 +1043,21 @@ tf_kernel_library(
     ],
 )
 
+tf_kernel_library(
+    name = "depthwise_conv_grad_op",
+    hdrs = [
+        "depthwise_conv_op.h",
+    ],
+    prefix = "depthwise_conv_grad_op",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:nn_ops_op_lib",
+    ],
+)
+
 tf_kernel_libraries(
     name = "nn",
     prefixes = [
@@ -777,6 +1077,7 @@ tf_kernel_libraries(
         ":bounds_check",
         ":conv_2d",
         ":conv_ops",
+        ":depthwise_conv_grad_op",
         ":depthwise_conv_op",
         ":ops_util",
         ":pooling_ops",
@@ -790,6 +1091,7 @@ tf_kernel_libraries(
 )
 
 tf_cc_tests(
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     tests = [
         "lrn_op_test",
@@ -836,6 +1138,7 @@ tf_kernel_library(
     ],
     deps = [
         ":conv_2d",
+        ":eigen_helpers",
         ":ops_util",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
@@ -899,6 +1202,7 @@ tf_kernel_library(
 
 tf_cc_test(
     name = "random_op_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     deps = [
         ":random_ops",
@@ -927,6 +1231,8 @@ tf_kernel_libraries(
 tf_kernel_libraries(
     name = "sparse",
     prefixes = [
+        "sparse_add_grad_op",
+        "sparse_add_op",
         "sparse_concat_op",
         "sparse_reorder_op",
         "sparse_split_op",
@@ -945,8 +1251,10 @@ tf_kernel_libraries(
 )
 
 tf_cc_tests(
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     tests = [
+        "sparse_add_op_test",
         "sparse_tensor_dense_matmul_op_test",
         "sparse_to_dense_op_test",
         "sparse_xent_op_test",
@@ -986,6 +1294,7 @@ tf_kernel_libraries(
 
 tf_cc_test(
     name = "scatter_op_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     deps = [
         ":ops_testutil",
@@ -1026,6 +1335,7 @@ tf_kernel_library(
 
 tf_cc_test(
     name = "training_ops_test",
+    size = "small",
     linkstatic = tf_kernel_tests_linkstatic(),  # Required for benchmarking
     deps = [
         ":ops_util",
@@ -1045,6 +1355,15 @@ filegroup(
     srcs = [
         "avgpooling_op.h",
         "bounds_check.h",
+        "eigen_activations.h",
+        "eigen_attention.h",
+        "eigen_backward_cuboid_convolutions.h",
+        "eigen_backward_spatial_convolutions.h",
+        "eigen_cuboid_convolution.h",
+        "eigen_patch_3d.h",
+        "eigen_pooling.h",
+        "eigen_softmax.h",
+        "eigen_spatial_convolutions.h",
         "maxpooling_op.h",
         "ops_util.cc",
         "ops_util.h",
@@ -1083,6 +1402,8 @@ filegroup(
         "gather_op.h",
         "identity_op.cc",
         "identity_op.h",
+        "immutable_constant_op.cc",
+        "immutable_constant_op.h",
         "matmul_op.cc",
         "matmul_op.h",
         "no_op.cc",

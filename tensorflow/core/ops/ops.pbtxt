@@ -106,6 +106,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -352,6 +353,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -414,6 +416,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -423,7 +426,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var and accum tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var and accum tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update \'*var\' according to the adagrad scheme."
   description: "accum += grad * grad\nvar -= lr * grad * (1 / sqrt(accum))"
@@ -507,6 +510,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -516,7 +520,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var, m, and v tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var, m, and v tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update \'*var\' according to the Adam algorithm."
   description: "lr_t <- learning_rate * sqrt(1 - beta2^t) / (1 - beta1^t)\nm_t <- beta1 * m_{t-1} + (1 - beta1) * g_t\nv_t <- beta2 * v_{t-1} + (1 - beta2) * g_t * g_t\nvariable <- variable - lr_t * m_t / (sqrt(v_t) + epsilon)"
@@ -590,6 +594,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -599,7 +604,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var and accum tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var and accum tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update \'*var\' according to the Ftrl-proximal scheme."
   description: "accum_new = accum + grad * grad\nlinear += grad + (accum_new^(-lr_power) - accum^(-lr_power)) / lr * var\nquadratic = 1.0 / (accum_new^(lr_power) * lr) + 2 * l2\nvar = (sign(linear) * l1 - linear) / quadratic if |linear| > l1 else 0.0\naccum = accum_new"
@@ -646,6 +651,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -655,7 +661,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, the subtraction will be protected by a lock;\notherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, the subtraction will be protected by a lock;\notherwise the behavior is undefined, but may exhibit less contention."
   }
   summary: "Update \'*var\' by subtracting \'alpha\' * \'delta\' from it."
 }
@@ -712,6 +718,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -721,7 +728,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var and accum tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var and accum tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update \'*var\' according to the momentum scheme."
   description: "accum = accum * momentum + grad\nvar -= lr * accum"
@@ -794,6 +801,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -803,7 +811,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var, m, and v tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var, m, and v tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update \'*var\' according to the RMSProp algorithm."
   description: "mean_square = decay * mean_square + (1-decay) * gradient ** 2\nDelta = learning_rate * gradient / sqrt(mean_square + epsilon)\n\nms <- rho * ms_{t-1} + (1-rho) * grad * grad\nmom <- momentum * mom_{t-1} + lr * grad / sqrt(ms + epsilon)\nvar <- var - mom"
@@ -841,6 +849,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -879,6 +888,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -993,6 +1003,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1044,6 +1055,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1561,6 +1573,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1647,6 +1660,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1723,6 +1737,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1773,6 +1788,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1828,6 +1844,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1862,6 +1879,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -1883,6 +1901,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -2624,6 +2643,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -4073,6 +4093,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -4105,6 +4126,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -4196,6 +4218,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -4362,6 +4385,30 @@ op {
   }
   summary: "Outputs a `Summary` protocol buffer with images."
   description: "The summary has up to `max_images` summary values containing images. The\nimages are built from `tensor` which must be 4-D with shape `[batch_size,\nheight, width, channels]` and where `channels` can be:\n\n*  1: `tensor` is interpreted as Grayscale.\n*  3: `tensor` is interpreted as RGB.\n*  4: `tensor` is interpreted as RGBA.\n\nThe images have the same number of channels as the input tensor. For float\ninput, the values are normalized one image at a time to fit in the range\n`[0, 255]`.  `uint8` values are unchanged.  The op uses two different\nnormalization algorithms:\n\n*  If the input values are all positive, they are rescaled so the largest one\n   is 255.\n\n*  If any input value is negative, the values are shifted so input value 0.0\n   is at 127.  They are then rescaled so that either the smallest value is 0,\n   or the largest one is 255.\n\nThe `tag` argument is a scalar `Tensor` of type `string`.  It is used to\nbuild the `tag` of the summary values:\n\n*  If `max_images` is 1, the summary value tag is \'*tag*/image\'.\n*  If `max_images` is greater than 1, the summary value tags are\n   generated sequentially as \'*tag*/image/0\', \'*tag*/image/1\', etc.\n\nThe `bad_color` argument is the color to use in the generated images for\nnon-finite input values.  It is a `unit8` 1-D tensor of length `channels`.\nEach element must be in the range `[0, 255]` (It represents the value of a\npixel in the output image).  Non-finite values in the input tensor are\nreplaced by this tensor in the output image.  The default value is the color\nred."
+}
+op {
+  name: "ImmutableConst"
+  output_arg {
+    name: "tensor"
+    type_attr: "dtype"
+  }
+  attr {
+    name: "dtype"
+    type: "type"
+    description: "Type of the returned tensor."
+  }
+  attr {
+    name: "shape"
+    type: "shape"
+    description: "Shape of the returned tensor."
+  }
+  attr {
+    name: "memory_region_name"
+    type: "string"
+    description: "Name of readonly memory region used by the tensor, see\nNewReadOnlyMemoryRegionFromFile in tensorflow::Env."
+  }
+  summary: "Returns immutable tensor from memory region."
+  description: "The current implementation memmaps the tensor from a file."
 }
 op {
   name: "InTopK"
@@ -4566,6 +4613,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -4768,6 +4816,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -4800,6 +4849,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -5381,6 +5431,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -5692,6 +5743,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -5794,6 +5846,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -6695,6 +6748,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -7626,6 +7680,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -7654,6 +7709,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -7689,6 +7745,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -7724,6 +7781,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -8360,6 +8418,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -8408,6 +8467,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -8474,6 +8534,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -8576,6 +8637,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -8621,6 +8683,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -8666,6 +8729,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -8711,6 +8775,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -8756,6 +8821,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -9004,11 +9070,12 @@ op {
         type: DT_DOUBLE
         type: DT_INT32
         type: DT_INT64
+        type: DT_COMPLEX64
       }
     }
   }
   summary: "Returns an element-wise indication of the sign of a number."
-  description: "y = sign(x) = -1 if x < 0; 0 if x == 0; 1 if x > 0."
+  description: "`y = sign(x) = -1` if `x < 0`; 0 if `x == 0`; 1 if `x > 0`.\n\nFor complex numbers, `y = sign(x) = x / |x|` if `x != 0`, otherwise `y = 0`."
 }
 op {
   name: "Sin"
@@ -9246,6 +9313,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -9281,6 +9349,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -9309,6 +9378,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -9344,6 +9414,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -9370,6 +9441,154 @@ op {
   }
   summary: "SpaceToDepth for tensors of type T."
   description: "Rearranges blocks of spatial data, into depth. More specifically,\nthis op outputs a copy of the input tensor where values from the `height`\nand `width` dimensions are moved to the `depth` dimension.\nThe attr `block_size` indicates the input block size and how the data is moved.\n\n  * Non-overlapping blocks of size `block_size x block size` are rearranged\n    into depth at each location.\n  * The depth of the output tensor is `input_depth * block_size * block_size`.\n  * The input tensor\'s height and width must be divisible by block_size.\n\nThat is, assuming the input is in the shape:\n`[batch, height, width, depth]`,\nthe shape of the output will be:\n`[batch, height/block_size, width/block_size, depth*block_size*block_size]`\n\nThis operation requires that the input tensor be of rank 4, and that\n`block_size` be >=1 and a divisor of both the input `height` and `width`.\n\nThis operation is useful for resizing the activations between convolutions\n(but keeping all data), e.g. instead of pooling. It is also useful for training\npurely convolutional models.\n\nFor example, given this input of shape `[1, 2, 2, 1]`, and block_size of 2:\n\n```prettyprint\nx = [[[[1], [2]],\n      [[3], [4]]]]\n```\n\nThis operation will output a tensor of shape `[1, 1, 1, 4]`:\n\n```prettyprint\n[[[[1, 2, 3, 4]]]]\n```\n\nHere, the input has a batch of 1 and each batch element has shape `[2, 2, 1]`,\nthe corresponding output will have a single element (i.e. width and height are\nboth 1) and will have a depth of 4 channels (1 * block_size * block_size).\nThe output element shape is `[1, 1, 4]`.\n\nFor an input tensor with larger depth, here of shape `[1, 2, 2, 3]`, e.g.\n\n```prettyprint\nx = [[[[1, 2, 3], [4, 5, 6]],\n      [[7, 8, 9], [10, 11, 12]]]]\n```\n\nThis operation, for block_size of 2, will return the following tensor of shape\n`[1, 1, 1, 12]`\n\n```prettyprint\n[[[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]]]]\n```\n\nSimilarly, for the following input of shape `[1 4 4 1]`, and a block size of 2:\n\n```prettyprint\nx = [[ [1],   [2],  [5],  [6]],\n     [ [3],   [4],  [7],  [8]],\n     [ [9],  [10], [13],  [14]],\n     [ [11], [12], [15],  [16]]]\n```\n\nthe operator will return the following tensor of shape `[1 2 2 4]`:\n\n```prettyprint\nx = [[[[1, 2, 3, 4],\n       [5, 6, 7, 8]],\n      [[9, 10, 11, 12],\n       [13, 14, 15, 16]]]]\n```"
+}
+op {
+  name: "SparseAdd"
+  input_arg {
+    name: "a_indices"
+    description: "2-D.  The `indices` of the first `SparseTensor`, size `[nnz, ndims]` Matrix."
+    type: DT_INT64
+  }
+  input_arg {
+    name: "a_values"
+    description: "1-D.  The `values` of the first `SparseTensor`, size `[nnz]` Vector."
+    type_attr: "T"
+  }
+  input_arg {
+    name: "a_shape"
+    description: "1-D.  The `shape` of the first `SparseTensor`, size `[ndims]` Vector."
+    type: DT_INT64
+  }
+  input_arg {
+    name: "b_indices"
+    description: "2-D.  The `indices` of the second `SparseTensor`, size `[nnz, ndims]` Matrix."
+    type: DT_INT64
+  }
+  input_arg {
+    name: "b_values"
+    description: "1-D.  The `values` of the second `SparseTensor`, size `[nnz]` Vector."
+    type_attr: "T"
+  }
+  input_arg {
+    name: "b_shape"
+    description: "1-D.  The `shape` of the second `SparseTensor`, size `[ndims]` Vector."
+    type: DT_INT64
+  }
+  input_arg {
+    name: "thresh"
+    description: "0-D.  The magnitude threshold that determines if an output value/index\npair takes space."
+    type_attr: "Treal"
+  }
+  output_arg {
+    name: "sum_indices"
+    type: DT_INT64
+  }
+  output_arg {
+    name: "sum_values"
+    type_attr: "T"
+  }
+  output_arg {
+    name: "sum_shape"
+    type: DT_INT64
+  }
+  attr {
+    name: "T"
+    type: "type"
+    allowed_values {
+      list {
+        type: DT_FLOAT
+        type: DT_DOUBLE
+        type: DT_INT64
+        type: DT_INT32
+        type: DT_UINT8
+        type: DT_UINT16
+        type: DT_INT16
+        type: DT_INT8
+        type: DT_COMPLEX64
+        type: DT_COMPLEX128
+        type: DT_QINT8
+        type: DT_QUINT8
+        type: DT_QINT32
+        type: DT_HALF
+      }
+    }
+  }
+  attr {
+    name: "Treal"
+    type: "type"
+    allowed_values {
+      list {
+        type: DT_FLOAT
+        type: DT_DOUBLE
+        type: DT_INT32
+        type: DT_INT64
+        type: DT_UINT8
+        type: DT_INT16
+        type: DT_INT8
+        type: DT_UINT16
+        type: DT_HALF
+      }
+    }
+  }
+  summary: "Adds two `SparseTensor` objects to produce another `SparseTensor`."
+  description: "The input `SparseTensor` objects\' indices are assumed ordered in standard\nlexicographic order.  If this is not the case, before this step run\n`SparseReorder` to restore index ordering.\n\nBy default, if two values sum to zero at some index, the output `SparseTensor`\nwould still include that particular location in its index, storing a zero in the\ncorresponding value slot.  To override this, callers can specify `thresh`,\nindicating that if the sum has a magnitude strictly smaller than `thresh`, its\ncorresponding value and index would then not be included.  In particular,\n`thresh == 0` (default) means everything is kept and actual thresholding happens\nonly for a positive value.\n\nIn the following shapes, `nnz` is the count after taking `thresh` into account."
+}
+op {
+  name: "SparseAddGrad"
+  input_arg {
+    name: "backprop_val_grad"
+    description: "1-D with shape `[nnz(sum)]`.  The gradient with respect to\nthe non-empty values of the sum."
+    type_attr: "T"
+  }
+  input_arg {
+    name: "a_indices"
+    description: "2-D.  The `indices` of the `SparseTensor` A, size `[nnz(A), ndims]`."
+    type: DT_INT64
+  }
+  input_arg {
+    name: "b_indices"
+    description: "2-D.  The `indices` of the `SparseTensor` B, size `[nnz(B), ndims]`."
+    type: DT_INT64
+  }
+  input_arg {
+    name: "sum_indices"
+    description: "2-D.  The `indices` of the sum `SparseTensor`, size\n`[nnz(sum), ndims]`."
+    type: DT_INT64
+  }
+  output_arg {
+    name: "a_val_grad"
+    description: "1-D with shape `[nnz(A)]`. The gradient with respect to the\nnon-empty values of A."
+    type_attr: "T"
+  }
+  output_arg {
+    name: "b_val_grad"
+    description: "1-D with shape `[nnz(B)]`. The gradient with respect to the\nnon-empty values of B."
+    type_attr: "T"
+  }
+  attr {
+    name: "T"
+    type: "type"
+    allowed_values {
+      list {
+        type: DT_FLOAT
+        type: DT_DOUBLE
+        type: DT_INT64
+        type: DT_INT32
+        type: DT_UINT8
+        type: DT_UINT16
+        type: DT_INT16
+        type: DT_INT8
+        type: DT_COMPLEX64
+        type: DT_COMPLEX128
+        type: DT_QINT8
+        type: DT_QUINT8
+        type: DT_QINT32
+        type: DT_HALF
+      }
+    }
+  }
+  summary: "The gradient operator for the SparseAdd op."
+  description: "The SparseAdd op calculates A + B, where A, B, and the sum are all represented\nas `SparseTensor` objects.  This op takes in the upstream gradient w.r.t.\nnon-empty values of the sum, and outputs the gradients w.r.t. the non-empty\nvalues of A and B."
 }
 op {
   name: "SparseApplyAdadelta"
@@ -9431,6 +9650,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -9506,6 +9726,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -9525,7 +9746,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var and accum tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var and accum tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update relevant entries in \'*var\' and \'*accum\' according to the adagrad scheme."
   description: "That is for rows we have grad for, we update var and accum as follows:\naccum += grad * grad\nvar -= lr * grad * (1 / sqrt(accum))"
@@ -9604,6 +9825,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -9623,7 +9845,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var and accum tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var and accum tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update relevant entries in \'*var\' according to the Ftrl-proximal scheme."
   description: "That is for rows we have grad for, we update var, accum and linear as follows:\naccum_new = accum + grad * grad\nlinear += grad + (accum_new^(-lr_power) - accum^(-lr_power)) / lr * var\nquadratic = 1.0 / (accum_new^(lr_power) * lr) + 2 * l2\nvar = (sign(linear) * l1 - linear) / quadratic if |linear| > l1 else 0.0\naccum = accum_new"
@@ -9686,6 +9908,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -9705,7 +9928,7 @@ op {
     default_value {
       b: false
     }
-    description: "If True, updating of the var and accum tensors will be protected by\na lock; otherwise the behavior is undefined, but may exhibit less contention."
+    description: "If `True`, updating of the var and accum tensors will be protected\nby a lock; otherwise the behavior is undefined, but may exhibit less\ncontention."
   }
   summary: "Update relevant entries in \'*var\' and \'*accum\' according to the momentum scheme."
   description: "That is for rows we have grad for, we update var and accum as follows:\n\naccum = accum * momentum + grad\nvar -= lr * accum"
@@ -10023,6 +10246,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -10134,17 +10358,17 @@ op {
   name: "SparseTensorDenseMatMul"
   input_arg {
     name: "a_indices"
-    description: "2-D.  The `indices` of the `SparseTensor`, size [nnz x 2] Matrix."
+    description: "2-D.  The `indices` of the `SparseTensor`, size `[nnz, 2]` Matrix."
     type: DT_INT64
   }
   input_arg {
     name: "a_values"
-    description: "1-D.  The `values` of the `SparseTensor`, size [nnz] Vector."
+    description: "1-D.  The `values` of the `SparseTensor`, size `[nnz]` Vector."
     type_attr: "T"
   }
   input_arg {
     name: "a_shape"
-    description: "1-D.  The `shape` of the `SparseTensor`, size [2] Vector."
+    description: "1-D.  The `shape` of the `SparseTensor`, size `[2]` Vector."
     type: DT_INT64
   }
   input_arg {
@@ -10597,6 +10821,7 @@ op {
         type: DT_QINT8
         type: DT_QUINT8
         type: DT_QINT32
+        type: DT_HALF
       }
     }
   }
@@ -11214,6 +11439,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -11263,6 +11489,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
@@ -11521,6 +11748,7 @@ op {
         type: DT_INT16
         type: DT_INT8
         type: DT_UINT16
+        type: DT_HALF
       }
     }
   }
