@@ -22,20 +22,25 @@ limitations under the License.
 #include "tensorflow/core/framework/numeric_types.h"
 #include "tensorflow/core/framework/tensor_types.h"
 
-// The following functors (sign, tanh, sigmoid, etc.) are not defined
-// by Eigen.  When their equivalent are added into the Eigen, we can
-// replace them using type aliases.
-
 namespace Eigen {
 namespace internal {
 
+// TODO(rmlarsen): Get rid of fmod2 once fmod is upstreamed to Eigen.
 template <typename T>
 struct scalar_fmod2_op {
   EIGEN_EMPTY_STRUCT_CTOR(scalar_fmod2_op)
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const T operator()(const T& a,
                                                            const T& b) const {
-    return fmod(a, b);
+    return std::fmod(a, b);
   }
+};
+
+template <typename T>
+struct functor_traits<scalar_fmod2_op<T>> {
+  enum {
+    Cost = 13,  // Reciprocal throughput of FPREM on Haswell.
+    PacketAccess = false,
+  };
 };
 
 // scalar_left and scalar_right are template helpers to partially
@@ -489,7 +494,7 @@ template <typename T>
 struct fmod : base<T, Eigen::internal::scalar_fmod2_op<T> > {};
 
 template <typename T>
-struct mod : base<T, Eigen::internal::scalar_mod2_op<T> > {};
+struct mod : base<T, Eigen::internal::scalar_mod2_op<T>> {};
 
 template <typename T>
 struct pow : base<T, Eigen::internal::scalar_binary_pow_op<T, T> > {};
@@ -499,6 +504,12 @@ struct maximum : base<T, Eigen::internal::scalar_max_op<T> > {};
 
 template <typename T>
 struct minimum : base<T, Eigen::internal::scalar_min_op<T> > {};
+
+template <typename T>
+struct igamma : base<T, Eigen::internal::scalar_igamma_op<T>> {};
+
+template <typename T>
+struct igammac : base<T, Eigen::internal::scalar_igammac_op<T>> {};
 
 template <typename T>
 struct squared_difference
@@ -581,7 +592,7 @@ struct BinaryFunctor {
              typename Functor::tscalar_type scalar);
 
   // Computes on device "d":
-  //   out = Functor(in0.broadcast(bcast0), in1.broadcast(bcast01))
+  //   out = Functor(in0.broadcast(bcast0), in1.broadcast(bcast1))
   //
   // TODO(zhifengc): makes BCast a template member function on NDIMS
   // instead making BinaryFunctor templates on NDIMS.

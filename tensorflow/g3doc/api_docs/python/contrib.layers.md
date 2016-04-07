@@ -413,6 +413,30 @@ subtraction, it usually shouldn't hurt much either.
 
 - - -
 
+### `tf.contrib.layers.make_all(module_name, doc_string_modules=None)` {#make_all}
+
+Generate `__all__` from the docstring of one or more modules.
+
+Usage: `make_all(__name__)` or
+`make_all(__name__, [sys.modules(__name__), other_module])`. The doc string
+modules must each a docstring, and `__all__` will contain all symbols with
+`@@` references, where that symbol currently exists in the module named
+`module_name`.
+
+##### Args:
+
+
+*  <b>`module_name`</b>: The name of the module (usually `__name__`).
+*  <b>`doc_string_modules`</b>: a list of modules from which to take docstring.
+  If None, then a list containing only the module named `module_name` is used.
+
+##### Returns:
+
+  A list suitable for use as `__all__`.
+
+
+- - -
+
 ### `tf.contrib.layers.optimize_loss(loss, global_step, learning_rate, optimizer, clip_gradients=None, moving_average_decay=0.9, learning_rate_decay_fn=None, variables=None)` {#optimize_loss}
 
 Given loss and parameters for optimizer, returns a training op.
@@ -423,7 +447,13 @@ Given loss and parameters for optimizer, returns a training op.
 *  <b>`loss`</b>: Tensor, 0 dimensional.
 *  <b>`global_step`</b>: Tensor, step counter for each update.
 *  <b>`learning_rate`</b>: float or Tensor, magnitude of update per each training step.
-*  <b>`optimizer`</b>: string or function, used as optimizer for training.
+*  <b>`optimizer`</b>: string, class or optimizer instance, used as trainer.
+             string should be name of optimizer, like 'SGD',
+               'Adam', 'Adagrad'. Full list in OPTIMIZER_CLS_NAMES constant.
+             class should be sub-class of tf.Optimizer that implements
+               `compute_gradients` and `apply_gradients` functions.
+             optimizer instance should be instantion of tf.Optimizer sub-class
+               and have `compute_gradients` and `apply_gradients` functions.
 *  <b>`clip_gradients`</b>: float or None, clips gradients by this value.
 *  <b>`moving_average_decay`</b>: float or None, takes into account previous loss
                         to make learning smoother due to outliers.

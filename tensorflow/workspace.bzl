@@ -6,15 +6,15 @@
 def tf_workspace(path_prefix = "", tf_repo_name = ""):
   native.new_http_archive(
     name = "gmock_archive",
-    url = "https://googlemock.googlecode.com/files/gmock-1.7.0.zip",
+    url = "https://archive.openswitch.net/gmock-1.7.0.zip",
     sha256 = "26fcbb5925b74ad5fc8c26b0495dfc96353f4d553492eb97e85a8a6d2f43095b",
     build_file = path_prefix + "google/protobuf/gmock.BUILD",
   )
 
   native.new_http_archive(
     name = "eigen_archive",
-    url = "https://bitbucket.org/eigen/eigen/get/36b0586de49f.tar.gz",
-    sha256 = "86da9dd97c91b6587a257add70d9478f4c463d6697d487564c5bfe83c4a0e8e0",
+    url = "https://bitbucket.org/eigen/eigen/get/3d9f227afae2.tar.gz",
+    sha256 = "bf2638b7e1085de0b430b000c07e090dc71c83dd7f5b934a06f68b7db02676bf",
     build_file = path_prefix + "eigen.BUILD",
   )
 

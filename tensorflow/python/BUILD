@@ -51,7 +51,10 @@ py_library(
         "platform/googletest.py",
     ],
     srcs_version = "PY2AND3",
-    deps = [":platform"],
+    deps = [
+        ":platform",
+        ":timeline",
+    ],
 )
 
 py_tests(
@@ -623,10 +626,6 @@ tf_gen_op_wrapper_py(
         "MatMul",
         "Sigmoid",
         "Tanh",
-        "Lgamma",
-        "Digamma",
-        "Erf",
-        "Erfc",
     ],
     require_shape_functions = True,
 )
@@ -937,6 +936,18 @@ tf_cuda_library(
     ],
 )
 
+cc_library(
+    name = "py_checkpoint_reader",
+    srcs = ["util/py_checkpoint_reader.cc"],
+    hdrs = [
+        "util/py_checkpoint_reader.h",
+    ],
+    deps = [
+        ":py_func_lib",
+        "//tensorflow/core:framework",
+    ],
+)
+
 tf_py_wrap_cc(
     name = "pywrap_tensorflow",
     srcs = ["tensorflow.i"],
@@ -958,6 +969,7 @@ tf_py_wrap_cc(
         "util/py_checkpoint_reader.i",
     ],
     deps = [
+        ":py_checkpoint_reader",
         ":py_func_lib",
         ":py_record_reader_lib",
         ":py_record_writer_lib",
@@ -1013,6 +1025,15 @@ py_test(
     ],
 )
 
+py_library(
+    name = "timeline",
+    srcs = ["client/timeline.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":platform",
+    ],
+)
+
 # Just used by tests.
 tf_cuda_library(
     name = "construction_fails_op",
@@ -1036,6 +1057,17 @@ py_test(
         ":framework",
         ":framework_test_lib",
         ":session",
+    ],
+)
+
+py_test(
+    name = "timeline_test",
+    size = "small",
+    srcs = ["client/timeline_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":timeline",
+        "//tensorflow:tensorflow_py",
     ],
 )
 
@@ -1065,7 +1097,6 @@ medium_kernel_test_list = glob([
     "kernel_tests/scatter_ops_test.py",
     "kernel_tests/seq2seq_test.py",
     "kernel_tests/slice_op_test.py",
-    "kernel_tests/transpose_op_test.py",
 ])
 
 sharded_kernel_test_list = glob([

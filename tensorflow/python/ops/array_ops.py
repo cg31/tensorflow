@@ -57,6 +57,7 @@ or join multiple tensors together.
 @@space_to_depth
 @@depth_to_space
 @@gather
+@@gather_nd
 @@dynamic_partition
 @@dynamic_stitch
 @@boolean_mask
@@ -80,6 +81,7 @@ from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import logging_ops
 # 'Constant' gets imported in the module 'array_ops'.
 from tensorflow.python.ops.constant_op import constant
+# go/tf-wildcard-import
 # pylint: disable=wildcard-import
 from tensorflow.python.ops.gen_array_ops import *
 # pylint: enable=wildcard-import
@@ -317,6 +319,11 @@ def concat(concat_dim, values, name="concat"):
     values = [values]
   # TODO(mrry): Change to return values?
   if len(values) == 1:  # Degenerate case of one tensor.
+    # Make a throwaway call to make_tensor_proto to make sure
+    # that concat_dim is of the correct type.
+    # TODO(keveman): Extract the type and shape checks out of make_tensor_proto
+    # in to a standalone function.
+    tensor_util.make_tensor_proto(concat_dim, dtype=dtypes.int32, shape=[])
     return identity(values[0], name=name)
   return gen_array_ops._concat(concat_dim=concat_dim,
                                values=values,
@@ -877,6 +884,16 @@ def _GatherShape(op):
   params_shape = op.inputs[0].get_shape()
   indices_shape = op.inputs[1].get_shape()
   return [indices_shape.concatenate(params_shape[1:])]
+
+
+@ops.RegisterShape("GatherNd")
+def _GatherNdShape(op):
+  """Shape function for array_ops.gather_nd."""
+  params_shape = op.inputs[0].get_shape()
+  indices_shape = op.inputs[1].get_shape().with_rank_at_least(2)
+  if indices_shape.ndims is not None:
+    indices_shape[-1].merge_with(params_shape.ndims)
+  return [indices_shape[:-1]]
 
 
 @ops.RegisterShape("Unique")
