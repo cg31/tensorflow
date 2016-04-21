@@ -27,6 +27,7 @@ limitations under the License.
 #include "tensorflow/core/common_runtime/memory_types.h"
 #include "tensorflow/core/common_runtime/rendezvous_mgr.h"
 #include "tensorflow/core/framework/log_memory.h"
+#include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/graph/node_builder.h"
 #include "tensorflow/core/graph/subgraph.h"
@@ -47,6 +48,11 @@ bool IsConstantFoldable(const Node* n,
     return false;
   }
   if (n->IsControlFlow() || n->IsSend() || n->IsRecv()) {
+    return false;
+  }
+  // TODO(yuanbyu): For now disable these session handle operations.
+  if (n->IsGetSessionHandle() || n->IsGetSessionTensor() ||
+      n->IsDeleteSessionTensor()) {
     return false;
   }
   if (n->IsSource()) {
@@ -224,6 +230,10 @@ bool ReplaceTensorWithConstant(Graph* graph, Device* partition_device,
   // constraint, do not replace it.
   // 2) If the destination tensor is an int32 tensor, but has DEVICE_MEMORY
   // constraint, do not replace it.
+  // 3) If the constant op created does not have a kernel implementation
+  // for the device, do not use it.
+  // 4) If the size of the constant in bytes is too large (> 10M), do not
+  // replace it. This prevents the size of the Graph from growing too large.
   // TODO(keveman): Consider adding a new constant op that has a kernel
   // implementation for all types, but with HostMemory constraint on it's
   // output.
@@ -243,6 +253,9 @@ bool ReplaceTensorWithConstant(Graph* graph, Device* partition_device,
       return false;
     }
   }
+  if (constant.TotalBytes() > 10 * 1024 * 1024) {
+    return false;
+  }
 
   Node* n = tensor.first;
   std::vector<const Edge*> edges_to_remove;
@@ -253,12 +266,26 @@ bool ReplaceTensorWithConstant(Graph* graph, Device* partition_device,
   }
   string node_name = n->name();
   Node* constant_node;
-  TF_CHECK_OK(NodeBuilder(strings::StrCat(graph->NewName(node_name), "__cf__",
-                                          UniqueConstantId()),
-                          "Const")
-                  .Attr("dtype", constant.dtype())
-                  .Attr("value", constant)
-                  .Finalize(graph, &constant_node));
+  auto builder = NodeDefBuilder(strings::StrCat(graph->NewName(node_name),
+                                                "__cf__", UniqueConstantId()),
+                                "Const")
+                     .Attr("dtype", constant.dtype())
+                     .Attr("value", constant);
+  NodeDef def;
+  if (!builder.Finalize(&def).ok()) {
+    return false;
+  }
+  const KernelDef* kdef;
+  if (!FindKernelDef(device_type, def, &kdef, nullptr).ok()) {
+    return false;
+  }
+
+  VLOG(1) << "Replacing " << tensor.first->DebugString()
+          << " :: " << tensor.second << " with a constant";
+
+  if (!NodeBuilder(builder).Finalize(graph, &constant_node).ok()) {
+    return false;
+  }
   for (auto edge : edges_to_remove) {
     graph->AddEdge(constant_node, 0, edge->dst(), edge->dst_input());
     graph->RemoveEdge(edge);
@@ -386,9 +413,6 @@ bool DoConstantFolding(const ConstantFoldingOptions& opts,
     if (!s.ok() || is_dead) {
       return c > 0;
     }
-    VLOG(1) << "Replacing " << tensors_to_replace[c].first->DebugString()
-            << " :: " << tensors_to_replace[c].second << " with constant "
-            << output.DebugString();
     if (ReplaceTensorWithConstant(graph, partition_device,
                                   tensors_to_replace[c], output)) {
       ++num_nodes_replaced;

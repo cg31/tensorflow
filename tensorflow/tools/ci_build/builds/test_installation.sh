@@ -68,11 +68,14 @@
 #   depends on compare_test_pb2 defined outside Python
 # tensorflow/python/framework/device_test.py:
 #   depends on CheckValid() and ToString(), both defined externally
+# tensorflow/python/framework/file_system_test.py:
+#   depends on having the .so which is not shipped in the pip package.
 #
 PY_TEST_BLACKLIST="${PY_TEST_BLACKLIST}:"\
 "tensorflow/python/framework/ops_test.py:"\
 "tensorflow/python/util/protobuf/compare_test.py:"\
-"tensorflow/python/framework/device_test.py"
+"tensorflow/python/framework/device_test.py:"\
+"tensorflow/python/framework/file_system_test.py"
 
 # Test blacklist: GPU-only
 PY_TEST_GPU_BLACKLIST="${PY_TEST_GPU_BLACKLIST}:"\
@@ -134,6 +137,16 @@ if [[ ${IS_VIRTUALENV} == "1" ]]; then
 else
   source tools/python_bin_path.sh
   # Assume: PYTHON_BIN_PATH is exported by the script above
+fi
+
+# Obtain the path to head/ghead binary (for log file printing)
+HEAD_BIN="ghead"
+if [[ -z $(which "${HEAD_BIN}") ]]; then
+  # This is not Mac (which uses coreutils/ghead), use head.
+  HEAD_BIN="head"
+  if [[ -z $(which "${HEAD_BIN}") ]]; then
+     die "Unable to obtain path to head or ghead"
+  fi
 fi
 
 if [[ -z "${PYTHON_BIN_PATH}" ]]; then
@@ -368,7 +381,7 @@ while true; do
 
       echo "  Log @: ${TEST_LOGS[K]}"
       echo "============== BEGINS failure log content =============="
-      head --lines=-1 "${TEST_LOGS[K]}"
+      "${HEAD_BIN}" --lines=-1 "${TEST_LOGS[K]}"
       echo "============== ENDS failure log content =============="
       echo ""
     fi

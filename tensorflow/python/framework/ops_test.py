@@ -58,10 +58,22 @@ class TensorTest(test_util.TensorFlowTestCase):
 class SparseTensorTest(test_util.TensorFlowTestCase):
 
   def testPythonConstruction(self):
-    sp = ops.SparseTensor([[1, 2], [2, 0], [3, 4]], ["a", "b", "c"], [4, 5])
+    indices = [[1, 2], [2, 0], [3, 4]]
+    values = [b"a", b"b", b"c"]
+    shape = [4, 5]
+    sp = ops.SparseTensor(indices, values, shape)
     self.assertEqual(sp.indices.dtype, dtypes.int64)
     self.assertEqual(sp.values.dtype, dtypes.string)
     self.assertEqual(sp.shape.dtype, dtypes.int64)
+    with self.test_session() as sess:
+      value = sp.eval()
+      self.assertAllEqual(indices, value.indices)
+      self.assertAllEqual(values, value.values)
+      self.assertAllEqual(shape, value.shape)
+      sess_run_value = sess.run(sp)
+      self.assertAllEqual(sess_run_value.indices, value.indices)
+      self.assertAllEqual(sess_run_value.values, value.values)
+      self.assertAllEqual(sess_run_value.shape, value.shape)
 
 
 class IndexedSlicesTest(test_util.TensorFlowTestCase):
@@ -755,6 +767,7 @@ class CollectionTest(test_util.TensorFlowTestCase):
     self.assertEqual([], g.get_collection("nothing"))
     self.assertEqual([27, blank1, blank2], g.get_collection("blah"))
     self.assertEqual([blank1], g.get_collection("blah", "prefix"))
+    self.assertEqual([blank1], g.get_collection("blah", ".*x"))
 
     # Make sure that get_collection() returns a first-level
     # copy of the collection, while get_collection_ref() returns
