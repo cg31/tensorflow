@@ -32,7 +32,7 @@ from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.ops import constant_op
-from tensorflow.python.platform import logging
+from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.util import compat
 
 
@@ -339,6 +339,17 @@ class OpDefLibrary(object):
     # Default name if not specified.
     if name is None:
       name = op_type_name
+
+    # Check for deprecation
+    deprecation_version = op_def.deprecation.version
+    if deprecation_version:
+      producer = g.graph_def_versions.producer
+      if producer >= deprecation_version:
+        raise NotImplementedError(
+            ("Op %s is not available in GraphDef version %d. "
+             "It has been removed in version %d. %s.") %
+            (op_type_name, producer, deprecation_version,
+             op_def.deprecation.explanation))
 
     # Requires that op_def has passed validation (using the C++
     # ValidateOpDef() from ../framework/op_def_util.h).

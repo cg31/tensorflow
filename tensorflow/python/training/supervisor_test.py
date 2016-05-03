@@ -107,6 +107,76 @@ class SupervisorTest(tf.test.TestCase):
       self.assertTrue(sv.should_stop())
       self.assertEqual(3, last_step)
 
+  def _csv_data(self, logdir):
+    # Create a small data file with 3 CSV records.
+    data_path = os.path.join(logdir, "data.csv")
+    with open(data_path, "w") as f:
+      f.write("1,2,3\n")
+      f.write("4,5,6\n")
+      f.write("7,8,9\n")
+    return data_path
+
+  def testManagedEndOfInputOneQueue(self):
+    # Tests that the supervisor finishes without an error when using
+    # a fixed number of epochs, reading from a single queue.
+    logdir = self._TestDir("managed_end_of_input_one_queue")
+    os.makedirs(logdir)
+    data_path = self._csv_data(logdir)
+    with tf.Graph().as_default():
+      # Create an input pipeline that reads the file 3 times.
+      filename_queue = tf.train.string_input_producer([data_path], num_epochs=3)
+      reader = tf.TextLineReader()
+      _, csv = reader.read(filename_queue)
+      rec = tf.decode_csv(csv, record_defaults=[[1], [1], [1]])
+      sv = tf.train.Supervisor(logdir=logdir)
+      with sv.managed_session("") as sess:
+        while not sv.should_stop():
+          sess.run(rec)
+
+  def testManagedEndOfInputTwoQueues(self):
+    # Tests that the supervisor finishes without an error when using
+    # a fixed number of epochs, reading from two queues, the second
+    # one producing a batch from the first one.
+    logdir = self._TestDir("managed_end_of_input_two_queues")
+    os.makedirs(logdir)
+    data_path = self._csv_data(logdir)
+    with tf.Graph().as_default():
+      # Create an input pipeline that reads the file 3 times.
+      filename_queue = tf.train.string_input_producer([data_path], num_epochs=3)
+      reader = tf.TextLineReader()
+      _, csv = reader.read(filename_queue)
+      rec = tf.decode_csv(csv, record_defaults=[[1], [1], [1]])
+      shuff_rec = tf.train.shuffle_batch(rec, 1, 6, 4)
+      sv = tf.train.Supervisor(logdir=logdir)
+      with sv.managed_session("") as sess:
+        while not sv.should_stop():
+          sess.run(shuff_rec)
+
+  def testManagedMainErrorTwoQueues(self):
+    # Tests that the supervisor correctly raises a main loop
+    # error even when using multiple queues for input.
+    logdir = self._TestDir("managed_main_error_two_queues")
+    os.makedirs(logdir)
+    data_path = self._csv_data(logdir)
+    with self.assertRaisesRegexp(RuntimeError, "fail at step 3"):
+      with tf.Graph().as_default():
+        # Create an input pipeline that reads the file 3 times.
+        filename_queue = tf.train.string_input_producer([data_path],
+                                                        num_epochs=3)
+        reader = tf.TextLineReader()
+        _, csv = reader.read(filename_queue)
+        rec = tf.decode_csv(csv, record_defaults=[[1], [1], [1]])
+        shuff_rec = tf.train.shuffle_batch(rec, 1, 6, 4)
+        sv = tf.train.Supervisor(logdir=logdir)
+        with sv.managed_session("") as sess:
+          for step in range(9):
+            if sv.should_stop():
+              break
+            elif step == 3:
+              raise RuntimeError("fail at step 3")
+            else:
+              sess.run(shuff_rec)
+
   def testSessionConfig(self):
     logdir = self._TestDir("session_config")
     with tf.Graph().as_default():
@@ -334,6 +404,7 @@ class SupervisorTest(tf.test.TestCase):
       sv.stop()
 
   def testInitOpFails(self):
+    server = tf.train.Server.create_local_server()
     logdir = self._TestDir("default_init_op_fails")
     with tf.Graph().as_default():
       v = tf.Variable([1.0, 2.0, 3.0], name="v")
@@ -341,9 +412,10 @@ class SupervisorTest(tf.test.TestCase):
       # w will not be initialized.
       sv = tf.train.Supervisor(logdir=logdir, init_op=v.initializer)
       with self.assertRaisesRegexp(RuntimeError, "uninitialized value w"):
-        sv.prepare_or_wait_for_session("local")
+        sv.prepare_or_wait_for_session(server.target)
 
   def testInitOpFailsForTransientVariable(self):
+    server = tf.train.Server.create_local_server()
     logdir = self._TestDir("default_init_op_fails_for_local_variable")
     with tf.Graph().as_default():
       v = tf.Variable([1.0, 2.0, 3.0], name="v",
@@ -353,7 +425,7 @@ class SupervisorTest(tf.test.TestCase):
       # w will not be initialized.
       sv = tf.train.Supervisor(logdir=logdir, local_init_op=v.initializer)
       with self.assertRaisesRegexp(RuntimeError, "uninitialized value w"):
-        sv.prepare_or_wait_for_session("local")
+        sv.prepare_or_wait_for_session(server.target)
 
   def testSetupFail(self):
     logdir = self._TestDir("setup_fail")
@@ -505,6 +577,43 @@ class SupervisorTest(tf.test.TestCase):
       self.assertEqual(0, len(sv.start_queue_runners(sess)))
       sv.stop()
 
+  def testPrepareSessionAfterStopForChief(self):
+    logdir = self._TestDir("prepare_after_stop_chief")
+    with tf.Graph().as_default():
+      sv = tf.train.Supervisor(logdir=logdir, is_chief=True)
+
+      # Create a first session and then stop.
+      sess = sv.prepare_or_wait_for_session("")
+      sv.stop()
+      sess.close()
+      self.assertTrue(sv.should_stop())
+
+      # Now create a second session and test that we don't stay stopped, until
+      # we ask to stop again.
+      sess2 = sv.prepare_or_wait_for_session("")
+      self.assertFalse(sv.should_stop())
+      sv.stop()
+      sess2.close()
+      self.assertTrue(sv.should_stop())
+
+  def testPrepareSessionAfterStopForNonChief(self):
+    logdir = self._TestDir("prepare_after_stop_nonchief")
+    with tf.Graph().as_default():
+      sv = tf.train.Supervisor(logdir=logdir, is_chief=False)
+
+      # Create a first session and then stop.
+      sess = sv.prepare_or_wait_for_session("")
+      sv.stop()
+      sess.close()
+      self.assertTrue(sv.should_stop())
+
+      # Now create a second session and test that we don't stay stopped, until
+      # we ask to stop again.
+      sess2 = sv.prepare_or_wait_for_session("")
+      self.assertFalse(sv.should_stop())
+      sv.stop()
+      sess2.close()
+      self.assertTrue(sv.should_stop())
 
 if __name__ == "__main__":
   tf.test.main()

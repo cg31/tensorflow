@@ -31,6 +31,7 @@ limitations under the License.
 #include "tensorflow/core/common_runtime/step_stats_collector.h"
 #include "tensorflow/core/framework/function.h"
 #include "tensorflow/core/framework/graph.pb.h"
+#include "tensorflow/core/framework/graph.pb_text.h"
 #include "tensorflow/core/framework/graph_def_util.h"
 #include "tensorflow/core/framework/log_memory.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -724,8 +725,9 @@ Status DirectSession::GetOrCreateExecutors(
 
     ek->items.resize(ek->items.size() + 1);
     auto* item = &(ek->items.back());
-    item->flib = NewFunctionLibraryRuntime(device, runner, graph_def_version,
-                                           fdefs, optimizer_opts);
+    item->flib =
+        NewFunctionLibraryRuntime(device_mgr_.get(), device, runner,
+                                  graph_def_version, fdefs, optimizer_opts);
 
     LocalExecutorParams params;
     params.device = device;
@@ -755,7 +757,8 @@ Status DirectSession::GetOrCreateExecutors(
     };
 
     optimizer.Optimize(lib, device, &partition_graph);
-    s = ValidateMemoryTypes(DeviceType(device->device_type()), partition_graph);
+    s = EnsureMemoryTypes(DeviceType(device->device_type()), device->name(),
+                          partition_graph);
     if (!s.ok()) {
       break;
     }
@@ -907,7 +910,7 @@ Status DirectSession::CreateGraphs(gtl::ArraySlice<string> feeds,
     const string& partition_name = partition.first;
 
     GraphDef* graph_def = &partition.second;
-    VLOG(2) << "Created " << graph_def->DebugString() << " for "
+    VLOG(2) << "Created " << ProtoDebugString(*graph_def) << " for "
             << partition_name;
 
     // Give the device an opportunity to rewrite its subgraph.

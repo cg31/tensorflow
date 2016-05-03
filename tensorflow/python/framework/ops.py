@@ -38,7 +38,7 @@ from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import registry
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import versions
-from tensorflow.python.platform import logging
+from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.util import compat
 
 
@@ -524,7 +524,6 @@ def convert_to_tensor(value, dtype=None, name=None, as_ref=False):
 
   ```python
   import numpy as np
-  array = np.random.rand(32, 100, 100)
 
   def my_func(arg):
     arg = tf.convert_to_tensor(arg, dtype=tf.float32)
@@ -987,7 +986,7 @@ SparseTensorValue = collections.namedtuple("SparseTensorValue",
 
 
 def _device_string(dev_spec):
-  if isinstance(dev_spec, pydev.Device):
+  if isinstance(dev_spec, pydev.DeviceSpec):
     return dev_spec.to_string()
   else:
     return dev_spec
@@ -2426,12 +2425,17 @@ class Graph(object):
     `names` are ignored, but it will not check for pre-existing membership of
     `value` in any of the collections in `names`.
 
+    `names` can be any iterable, but if `names` is a string, it is treated as a
+    single collection name.
+
     Args:
       names: The keys for the collections to add to. The `GraphKeys` class
         contains many standard names for collections.
       value: The value to add to the collections.
     """
-    for name in set(names):
+    # Make sure names are unique, but treat strings as a single collection name
+    names = (names,) if isinstance(names, six.string_types) else set(names)
+    for name in names:
       self.add_to_collection(name, value)
 
   def get_collection_ref(self, name):
@@ -3680,7 +3684,7 @@ def op_scope(values, name, default_name=None):
   """Returns a context manager for use when defining a Python op.
 
   This context manager validates that the given `values` are from the
-  same graph, ensures that that graph is the default graph, and pushes a
+  same graph, ensures that graph is the default graph, and pushes a
   name scope.
 
   For example, to define a new Python op called `my_op`:

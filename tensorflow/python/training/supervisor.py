@@ -30,7 +30,7 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import data_flow_ops
 from tensorflow.python.ops import logging_ops
 from tensorflow.python.ops import variables
-from tensorflow.python.platform import logging
+from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.training import coordinator
 from tensorflow.python.training import saver as saver_mod
 from tensorflow.python.training import session_manager as session_manager_mod
@@ -72,8 +72,9 @@ class Supervisor(object):
   check for `sv.should_stop()`.
 
   Exceptions that indicate that the training inputs have been exhausted,
-  `tf.errors.OutOfRange`, also cause `sv.should_stop()` to return `True` but
-  are not re-raised from the `with` block: they indicate a normal termination.
+  `tf.errors.OutOfRangeError`, also cause `sv.should_stop()` to return `True`
+  but are not re-raised from the `with` block: they indicate a normal
+  termination.
 
   #### Use for multiple replicas
 
@@ -588,7 +589,7 @@ class Supervisor(object):
     on the parameters to the constructor and may include:
 
       - A Summary thread computing summaries every save_summaries_secs.
-      - A Checkpoint thread saving the model every every save_model_secs.
+      - A Checkpoint thread saving the model every save_model_secs.
       - A StepCounter thread measure step time.
 
     Args:
@@ -661,6 +662,11 @@ class Supervisor(object):
     Returns:
       A Session object that can be used to drive the model.
     """
+    # For users who recreate the session with prepare_or_wait_for_session(), we
+    # need to clear the coordinator's stop_event so that threads managed by the
+    # coordinator can run.
+    self._coord.clear_stop()
+
     if self._is_chief:
       sess = self._session_manager.prepare_session(
           master, init_op=self.init_op, saver=self.saver,
@@ -668,11 +674,6 @@ class Supervisor(object):
           max_wait_secs=max_wait_secs, config=config,
           init_feed_dict=self._init_feed_dict, init_fn=self._init_fn)
       self._write_graph()
-      # For users who recreate the session with
-      # prepare_or_wait_for_session(), we need to clear the
-      # coordinator's stop_event so that threads managed by the
-      # coordinator can run.
-      self._coord.clear_stop()
       if start_standard_services:
         self.start_standard_services(sess)
     else:
