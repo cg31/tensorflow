@@ -10,9 +10,9 @@ exports_files(["LICENSE"])
 load("//tensorflow:tensorflow.bzl", "tf_cuda_library")
 load("//tensorflow:tensorflow.bzl", "tf_gen_op_wrapper_py")
 load("//tensorflow:tensorflow.bzl", "py_tests")
+load("//tensorflow:tensorflow.bzl", "tf_py_wrap_cc")
 load("//tensorflow:tensorflow.bzl", "cuda_py_test")
 load("//tensorflow:tensorflow.bzl", "cuda_py_tests")
-load("//tensorflow:tensorflow.bzl", "tf_py_wrap_cc")
 load("//tensorflow/core:platform/default/build_config.bzl", "tf_proto_library")
 load("//tensorflow/core:platform/default/build_config.bzl", "tf_proto_library_py")
 
@@ -151,18 +151,6 @@ py_test(
     ],
 )
 
-py_test(
-    name = "pywrap_status_test",
-    size = "small",
-    srcs = ["lib/core/pywrap_status_test.py"],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":framework_test_lib",
-        ":platform_test",
-        "//tensorflow/core:protos_all_py",
-    ],
-)
-
 cc_library(
     name = "python_op_gen",
     srcs = [
@@ -228,10 +216,13 @@ py_library(
         "ops/common_shapes.py",
     ],
     srcs_version = "PY2AND3",
-    deps = [":framework_for_generated_wrappers"],
+    deps = [
+        ":framework_for_generated_wrappers",
+        ":pywrap_tensorflow",
+    ],
 )
 
-# subinclude("//third_party/py/cython:build_defs")
+# load("//third_party/py/cython:build_defs.bzl", "pyx_library")
 
 py_library(
     name = "extra_py_tests_deps",
@@ -978,18 +969,6 @@ tf_cuda_library(
     ],
 )
 
-cc_library(
-    name = "py_checkpoint_reader",
-    srcs = ["util/py_checkpoint_reader.cc"],
-    hdrs = [
-        "util/py_checkpoint_reader.h",
-    ],
-    deps = [
-        ":py_func_lib",
-        "//tensorflow/core:framework",
-    ],
-)
-
 tf_py_wrap_cc(
     name = "pywrap_tensorflow",
     srcs = ["tensorflow.i"],
@@ -999,8 +978,6 @@ tf_py_wrap_cc(
         "client/tf_session.i",
         "framework/python_op_gen.i",
         "lib/core/py_func.i",
-        "lib/core/status.i",
-        "lib/core/status_helper.i",
         "lib/core/strings.i",
         "lib/io/py_record_reader.i",
         "lib/io/py_record_writer.i",
@@ -1012,12 +989,12 @@ tf_py_wrap_cc(
     ],
     deps = [
         ":numpy_lib",
-        ":py_checkpoint_reader",
         ":py_func_lib",
         ":py_record_reader_lib",
         ":py_record_writer_lib",
         ":python_op_gen",
         ":tf_session_helper",
+        "//tensorflow/core:lib",
         "//tensorflow/core/distributed_runtime:server_lib",
         "//tensorflow/core/distributed_runtime/rpc:grpc_server_lib",
         "//tensorflow/core/distributed_runtime/rpc:grpc_session",
@@ -1137,6 +1114,7 @@ sharded_kernel_test_list = glob([
     "kernel_tests/cwise_ops_test.py",
     "kernel_tests/embedding_ops_test.py",
     "kernel_tests/linalg_grad_test.py",
+    "kernel_tests/conv_ops_3d_test.py",
 ])
 
 cpu_only_kernel_test_list = glob([
@@ -1164,6 +1142,7 @@ cpu_only_kernel_test_list = glob([
     "kernel_tests/matrix_solve_op_test.py",
     "kernel_tests/matrix_triangular_solve_op_test.py",
     "kernel_tests/matrix_solve_ls_op_test.py",
+    "kernel_tests/multinomial_op_test.py",
     "kernel_tests/mutex_ops_test.py",
     "kernel_tests/parsing_ops_test.py",
     "kernel_tests/partitioned_variables_test.py",
@@ -1282,6 +1261,7 @@ cuda_py_test(
     additional_deps = [
         ":training",
     ],
+    main = "training/session_manager_test.py",
 )
 
 py_test(
@@ -1373,4 +1353,5 @@ cuda_py_test(
     srcs = [
         "ops/batch_norm_benchmark.py",
     ],
+    main = "ops/batch_norm_benchmark.py",
 )

@@ -546,7 +546,8 @@ def convert_to_tensor(value, dtype=None, name=None, as_ref=False):
     dtype: Optional element type for the returned tensor. If missing, the
       type is inferred from the type of `value`.
     name: Optional name to use if a new `Tensor` is created.
-    as_ref: True if we want the result as a ref tensor.
+    as_ref: True if we want the result as a ref tensor. Only used if a new
+      `Tensor` is created.
 
   Returns:
     A `Tensor` based on `value`.
@@ -882,6 +883,13 @@ class SparseTensor(object):
   @@shape
   @@graph
   """
+
+  @classmethod
+  def from_value(cls, sparse_tensor_value):
+    return SparseTensor(
+        indices=sparse_tensor_value.indices,
+        values=sparse_tensor_value.values,
+        shape=sparse_tensor_value.shape)
 
   def __init__(self, indices, values, shape):
     """Creates a `SparseTensor`.
@@ -1292,6 +1300,24 @@ class Operation(object):
     tensor._add_consumer(self)  # pylint: disable=protected-access
     self._recompute_node_def()
 
+  def _add_control_inputs(self, ops):
+    """Add a list of new control inputs to this operation.
+
+    Args:
+      ops: the list of Operations to add as control input.
+
+    Raises:
+      TypeError: if ops is not a list of Operations.
+      ValueError: if any op in ops is from a different graph.
+    """
+    if ops:
+      for op in ops:
+        if not isinstance(op, Operation):
+          raise TypeError("op must be an Operation: %s" % op)
+        _assert_same_graph(self, op)
+        self._control_inputs.append(op)
+      self._recompute_node_def()
+
   def _add_control_input(self, op):
     """Add a new control input to this operation.
 
@@ -1302,11 +1328,7 @@ class Operation(object):
       TypeError: if op is not an Operation.
       ValueError: if op is from a different graph.
     """
-    if not isinstance(op, Operation):
-      raise TypeError("op must be an Operation: %s" % op)
-    _assert_same_graph(self, op)
-    self._control_inputs.append(op)
-    self._recompute_node_def()
+    self._add_control_inputs([op])
 
   # Methods below are used when building the NodeDef and Graph proto.
   def _recompute_node_def(self):
@@ -1811,6 +1833,7 @@ class Graph(object):
   may define additional collections by specifying a new name.
 
   @@add_to_collection
+  @@add_to_collections
   @@get_collection
   @@get_collection_ref
 
@@ -2003,6 +2026,7 @@ class Graph(object):
       if from_version is None or op_id > from_version:
         graph.node.extend([op.node_def])
         if op.outputs and add_shapes:
+          assert "_output_shapes" not in graph.node[-1].attr
           graph.node[-1].attr["_output_shapes"].list.shape.extend([
               output.get_shape().as_proto() for output in op.outputs])
         bytesize += op.node_def.ByteSize()
@@ -3593,6 +3617,8 @@ class GraphKeys(object):
   BIASES = "biases"
   # Key to collect activations
   ACTIVATIONS = "activations"
+  # Key to collect update_ops
+  UPDATE_OPS = "update_ops"
 
   # Key to indicate various ops.
   INIT_OP = "init_op"
