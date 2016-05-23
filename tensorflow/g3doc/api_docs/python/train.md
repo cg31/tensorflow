@@ -948,7 +948,7 @@ saver.restore(...checkpoint filename...)
 
 Creates a new ExponentialMovingAverage object.
 
-The `Apply()` method has to be called to create shadow variables and add
+The `apply()` method has to be called to create shadow variables and add
 ops to maintain moving averages.
 
 The optional `num_updates` parameter allows one to tweak the decay rate
@@ -965,7 +965,7 @@ move faster.  If passed, the actual decay rate used is:
 *  <b>`decay`</b>: Float.  The decay to use.
 *  <b>`num_updates`</b>: Optional count of number of updates applied to variables.
 *  <b>`name`</b>: String. Optional prefix name to use for the name of ops added in
-    `Apply()`.
+    `apply()`.
 
 
 - - -
@@ -1687,7 +1687,7 @@ with tf.Graph().as_default():
     # Use the session to train the graph.
     while not sv.should_stop():
       sess.run(<my_train_op>)
- ```
+```
 
 Within the `with sv.managed_session()` block all variables in the graph have
 been initialized.  In addition, a few services have been started to
@@ -1897,7 +1897,7 @@ Create a `Supervisor`.
 
 - - -
 
-#### `tf.train.Supervisor.managed_session(master='', config=None, start_standard_services=True)` {#Supervisor.managed_session}
+#### `tf.train.Supervisor.managed_session(master='', config=None, start_standard_services=True, close_summary_writer=True)` {#Supervisor.managed_session}
 
 Returns a context manager for a managed session.
 
@@ -1951,6 +1951,8 @@ the training loop and are considered normal termination.
     Passed as-is to create the session.
 *  <b>`start_standard_services`</b>: Whether to start the standard services,
     such as checkpoint, summary and step counter.
+*  <b>`close_summary_writer`</b>: Whether to close the summary writer when
+    closing the session.  Defaults to True.
 
 ##### Returns:
 
@@ -2140,12 +2142,12 @@ Block waiting for the coordinator to stop.
 #### Other Methods
 - - -
 
-#### `tf.train.Supervisor.Loop(timer_interval_secs, target, args=None)` {#Supervisor.Loop}
+#### `tf.train.Supervisor.Loop(timer_interval_secs, target, args=None, kwargs=None)` {#Supervisor.Loop}
 
 Start a LooperThread that calls a function periodically.
 
-If `timer_interval_secs` is None the thread calls `target(args)`
-repeatedly.  Otherwise `target(args)` is called every `timer_interval_secs`
+If `timer_interval_secs` is None the thread calls `target(*args, **kwargs)`
+repeatedly.  Otherwise it calls it every `timer_interval_secs`
 seconds.  The thread terminates when a stop is requested.
 
 The started thread is added to the list of threads managed by the supervisor
@@ -2157,6 +2159,7 @@ so it does not need to be passed to the `stop()` method.
 *  <b>`timer_interval_secs`</b>: Number. Time boundaries at which to call `target`.
 *  <b>`target`</b>: A callable object.
 *  <b>`args`</b>: Optional arguments to pass to `target` when calling it.
+*  <b>`kwargs`</b>: Optional keyword arguments to pass to `target` when calling it.
 
 ##### Returns:
 
@@ -2388,12 +2391,23 @@ Return the Init Op used by the supervisor.
 
 - - -
 
-#### `tf.train.Supervisor.loop(timer_interval_secs, target, args=None)` {#Supervisor.loop}
+#### `tf.train.Supervisor.is_chief` {#Supervisor.is_chief}
+
+Return True if this is a chief supervisor.
+
+##### Returns:
+
+  A bool.
+
+
+- - -
+
+#### `tf.train.Supervisor.loop(timer_interval_secs, target, args=None, kwargs=None)` {#Supervisor.loop}
 
 Start a LooperThread that calls a function periodically.
 
-If `timer_interval_secs` is None the thread calls `target(args)`
-repeatedly.  Otherwise `target(args)` is called every `timer_interval_secs`
+If `timer_interval_secs` is None the thread calls `target(*args, **kwargs)`
+repeatedly.  Otherwise it calls it every `timer_interval_secs`
 seconds.  The thread terminates when a stop is requested.
 
 The started thread is added to the list of threads managed by the supervisor
@@ -2405,6 +2419,7 @@ so it does not need to be passed to the `stop()` method.
 *  <b>`timer_interval_secs`</b>: Number. Time boundaries at which to call `target`.
 *  <b>`target`</b>: A callable object.
 *  <b>`args`</b>: Optional arguments to pass to `target` when calling it.
+*  <b>`kwargs`</b>: Optional keyword arguments to pass to `target` when calling it.
 
 ##### Returns:
 
@@ -3063,7 +3078,7 @@ Merges all summaries collected in the default graph.
 ##### Returns:
 
   If no summaries were collected, returns None.  Otherwise returns a scalar
-  `Tensor` of type`string` containing the serialized `Summary` protocol
+  `Tensor` of type `string` containing the serialized `Summary` protocol
   buffer resulting from the merging.
 
 
@@ -3331,7 +3346,7 @@ global_step: 10
 
 ### `tf.train.write_graph(graph_def, logdir, name, as_text=True)` {#write_graph}
 
-Writes a graph proto on disk.
+Writes a graph proto to a file.
 
 The graph is written as a binary proto unless `as_text` is `True`.
 
@@ -3345,7 +3360,8 @@ tf.train.write_graph(sess.graph_def, '/tmp/my-model', 'train.pbtxt')
 
 
 *  <b>`graph_def`</b>: A `GraphDef` protocol buffer.
-*  <b>`logdir`</b>: Directory where to write the graph.
+*  <b>`logdir`</b>: Directory where to write the graph. This can refer to remote
+    filesystems, such as Google Cloud Storage (GCS).
 *  <b>`name`</b>: Filename for the graph.
 *  <b>`as_text`</b>: If `True`, writes the graph as an ASCII proto.
 
@@ -3372,7 +3388,7 @@ the other threads it coordinates to stop.
 You typically pass looper threads to the supervisor `Join()` method.
 - - -
 
-#### `tf.train.LooperThread.__init__(coord, timer_interval_secs, target=None, args=None)` {#LooperThread.__init__}
+#### `tf.train.LooperThread.__init__(coord, timer_interval_secs, target=None, args=None, kwargs=None)` {#LooperThread.__init__}
 
 Create a LooperThread.
 
@@ -3384,6 +3400,7 @@ Create a LooperThread.
     if it should be called back to back.
 *  <b>`target`</b>: Optional callable object that will be executed in the thread.
 *  <b>`args`</b>: Optional arguments to pass to `target` when calling it.
+*  <b>`kwargs`</b>: Optional keyword arguments to pass to `target` when calling it.
 
 ##### Raises:
 
@@ -3482,7 +3499,7 @@ exception.
 
 - - -
 
-#### `tf.train.LooperThread.loop(coord, timer_interval_secs, target, args=None)` {#LooperThread.loop}
+#### `tf.train.LooperThread.loop(coord, timer_interval_secs, target, args=None, kwargs=None)` {#LooperThread.loop}
 
 Start a LooperThread that calls a function periodically.
 
@@ -3498,6 +3515,7 @@ requested.
 *  <b>`timer_interval_secs`</b>: Number. Time boundaries at which to call `target`.
 *  <b>`target`</b>: A callable object.
 *  <b>`args`</b>: Optional arguments to pass to `target` when calling it.
+*  <b>`kwargs`</b>: Optional keyword arguments to pass to `target` when calling it.
 
 ##### Returns:
 

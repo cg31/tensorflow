@@ -32,6 +32,7 @@ apt-get install -y \
     gfortran \
     libatlas-base-dev \
     libblas-dev \
+    libcurl4-openssl-dev \
     liblapack-dev \
     libtool \
     openjdk-8-jdk \
@@ -39,10 +40,12 @@ apt-get install -y \
     pkg-config \
     python-dev \
     python-numpy \
+    python-pandas \
     python-pip \
     python-virtualenv \
     python3-dev \
     python3-numpy \
+    python3-pandas \
     python3-pip \
     sudo \
     swig \

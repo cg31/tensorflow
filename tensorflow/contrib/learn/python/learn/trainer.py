@@ -1,4 +1,7 @@
-"""Generic trainer for TensorFlow models."""
+"""Generic trainer for TensorFlow models.
+
+This module is deprecated, please use graph_actions.
+"""
 #  Copyright 2015-present The Scikit Flow Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +22,7 @@ from __future__ import print_function
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import init_ops
-from tensorflow.python.ops import clip_ops
-from tensorflow.python.ops import control_flow_ops
-from tensorflow.python.ops import gradients
-from tensorflow.python.ops import variables
-from tensorflow.python.ops import variable_scope as vs
-from tensorflow.contrib.layers import optimizers
+from tensorflow.python.platform import tf_logging as logging
 
 
 def train(session,
@@ -43,16 +39,19 @@ def train(session,
 
   Args:
     session: Session object.
-    train: Tensor, trains model.
+    train_op: Tensor, trains model.
     loss: Tensor, loss value.
     global_step: Tensor, global step of the model.
     feed_dict_fn: Function that will return a feed dictionary.
-    summary_writer: SummaryWriter object to use for writing summaries.
     steps: Number of steps to run.
     monitor: Monitor object to track training progress and induce early
       stopping
+    summary_writer: SummaryWriter object to use for writing summaries.
     summaries: Joined object of all summaries that should be ran.
+    feed_params_fn: Feed params function.
   """
+  logging.warning("learn.trainer.train is deprecated. "
+                  "Please use learn.graph_actions.train instead.")
   for step in xrange(steps):
     feed_dict = feed_dict_fn()
     if summaries is not None:
@@ -63,13 +62,5 @@ def train(session,
       global_step_value, loss_value, _ = session.run(
           [global_step, loss, train_op],
           feed_dict=feed_dict)
-    monitor.update(step,
-                   global_step_value,
-                   loss_value,
-                   session,
-                   feed_params_fn,
-                   loss_expression_tensor=loss)
     if summaries is not None and summary_writer and summ is not None:
       summary_writer.add_summary(summ, global_step_value)
-    if monitor.monitor_inducing_stop():
-      break

@@ -78,6 +78,7 @@ from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import common_shapes
+from tensorflow.python.ops import constant_op
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import logging_ops
@@ -248,6 +249,94 @@ def pack(values, name="pack"):
     return gen_array_ops._pack(values, name=name)
 
 
+# pylint: disable=invalid-name
+def _autopacking_helper(list_or_tuple, dtype, name):
+  """Converts the given list or tuple to a tensor by packing.
+
+  Args:
+    list_or_tuple: A (possibly nested) list or tuple containing a tensor.
+    dtype: The element type of the returned tensor.
+    name: A name for the returned tensor.
+
+  Returns:
+    A `tf.Tensor` with value equivalent to `list_or_tuple`.
+  """
+  must_pack = False
+  converted_elems = []
+  with ops.name_scope(name) as scope:
+    for i, elem in enumerate(list_or_tuple):
+      if ops.is_dense_tensor_like(elem):
+        if dtype is not None and elem.dtype.base_dtype != dtype:
+          raise TypeError(
+              "Cannot convert a list containing a tensor of dtype "
+              "%s to %s (Tensor is: %r)" % (elem.dtype, dtype, elem))
+        converted_elems.append(elem)
+        must_pack = True
+      elif isinstance(elem, (list, tuple)):
+        converted_elem = _autopacking_helper(elem, dtype, str(i))
+        if ops.is_dense_tensor_like(converted_elem):
+          must_pack = True
+        converted_elems.append(converted_elem)
+      else:
+        converted_elems.append(elem)
+    if must_pack:
+      elems_as_tensors = []
+      for i, elem in enumerate(converted_elems):
+        if ops.is_dense_tensor_like(elem):
+          elems_as_tensors.append(elem)
+        else:
+          # NOTE(mrry): This is inefficient, but it enables us to
+          # handle the case where the list arguments are other
+          # convertible-to-tensor types, such as numpy arrays.
+          elems_as_tensors.append(
+              constant_op.constant(elem, dtype=dtype, name=str(i)))
+      return gen_array_ops._pack(elems_as_tensors, name=scope)
+    else:
+      return converted_elems
+
+
+def _get_dtype_from_nested_lists(list_or_tuple):
+  """Returns the dtype of any tensor-like object in `list_or_tuple`, if found.
+
+  Args:
+    list_or_tuple: A list or tuple representing an object that can be
+      converted to a `tf.Tensor`.
+
+  Returns:
+    The dtype of any tensor-like object in `list_or_tuple`, or `None` if no
+    such object exists.
+  """
+  for elem in list_or_tuple:
+    if ops.is_dense_tensor_like(elem):
+      return elem.dtype.base_dtype
+    elif isinstance(elem, (list, tuple)):
+      maybe_dtype = _get_dtype_from_nested_lists(elem)
+      if maybe_dtype is not None:
+        return maybe_dtype
+  return None
+
+
+def _autopacking_conversion_function(v, dtype=None, name=None, as_ref=False):
+  """Tensor conversion function that automatically packs arguments."""
+  if as_ref:
+    return NotImplemented
+  inferred_dtype = _get_dtype_from_nested_lists(v)
+  if inferred_dtype is None:
+    # We did not find any tensor-like objects in the nested lists, so defer to
+    # other conversion functions.
+    return NotImplemented
+  if dtype is not None and dtype != inferred_dtype:
+    return NotImplemented
+  return _autopacking_helper(v, inferred_dtype, name or "packed")
+# pylint: enable=invalid-name
+
+
+# NOTE: Register this conversion function to run *before* one that
+# assumes every element is a value.
+ops.register_tensor_conversion_function(
+    (list, tuple), _autopacking_conversion_function, 99)
+
+
 def unpack(value, num=None, name="unpack"):
   """Unpacks the outer dimension of a rank-`R` tensor into rank-`(R-1)` tensors.
 
@@ -412,9 +501,8 @@ def boolean_mask(tensor, mask, name="boolean_mask"):
   where `(i1,...,iK)` is the ith `True` entry of `mask` (row-major order).
 
   Args:
-    tensor:  N-D tensor.  First K dimensions can be None, which allows e.g.
-      undefined batch size.  Trailing dimensions must be specified.
-    mask:  K-D boolean tensor, K <= N.
+    tensor:  N-D tensor.
+    mask:  K-D boolean tensor, K <= N and K must be known statically.
     name:  A name for this operation (optional).
 
   Returns:
@@ -453,7 +541,12 @@ def boolean_mask(tensor, mask, name="boolean_mask"):
           ".  E.g. shape=[None] is ok, but shape=None is not.")
     shape_tensor[:ndims_mask].assert_is_compatible_with(shape_mask)
 
-    tensor = reshape(tensor, [-1] + shape_tensor.as_list()[ndims_mask:])
+    tensor = reshape(tensor, concat(0, [[-1], shape(tensor)[ndims_mask:]]))
+    first_dim = shape_tensor[:ndims_mask].num_elements()
+    tensor.set_shape(
+        tensor_shape.as_shape([first_dim])
+        .concatenate(shape_tensor[ndims_mask:]))
+
     mask = reshape(mask, [-1])
     return _apply_mask_1d(tensor, mask)
 
@@ -1127,17 +1220,19 @@ def _SqueezeShape(op):
 def _BitcastShape(op):
   """Shape function for Bitcast op."""
   input_shape = op.inputs[0].get_shape()
+  if input_shape == tensor_shape.unknown_shape():
+    return [tensor_shape.unknown_shape()]
   input_type = op.inputs[0].dtype
   size_of_input = input_type.size
   output = dtypes.as_dtype(op.get_attr("type"))
   size_of_output = output.size
   if size_of_input == size_of_output:
-    return [tensor_shape.TensorShape(input_shape)]
+    return [input_shape]
   else:
     if size_of_output > size_of_input:
-      new_shape = input_shape.as_list()
+      new_shape = input_shape.with_rank_at_least(1).as_list()
       last_val = new_shape[-1]
-      if last_val == (size_of_output // size_of_input):
+      if last_val is None or last_val == (size_of_output // size_of_input):
         new_shape = new_shape[:-1]
       else:
         raise ValueError(
@@ -1817,14 +1912,21 @@ def _DepthToSpaceShape(op):
       [input_shape[0], height, width, new_depth])]
 
 
-def one_hot(indices, depth, on_value=1, off_value=0,
-            axis=None, dtype=dtypes.float32, name=None):
+def one_hot(indices, depth, on_value=None, off_value=None,
+            axis=None, dtype=None, name=None):
   """Returns a one-hot tensor.
 
   The locations represented by indices in `indices` take value `on_value`,
-  while all other locations take value `off_value`. By default, `on_value` is 1,
-  and `off_value` is 0. The type of the output tensor is specified by `dtype`, 
-  which defaults to `tf.float32`.
+  while all other locations take value `off_value`. 
+
+  `on_value` and `off_value` must have matching data types. If `dtype` is also
+  provided, they must be the same data type as specified by `dtype`.
+
+  If `on_value` is not provided, it will default to the value `1` with type 
+  `dtype`
+
+  If `off_value` is not provided, it will default to the value `0` with type 
+  `dtype`
 
   If the input `indices` is rank `N`, the output will have rank `N+1`. The
   new axis is created at dimension `axis` (default: the new axis is appended
@@ -1846,6 +1948,13 @@ def one_hot(indices, depth, on_value=1, off_value=0,
     depth x batch x features if axis == 0
   ```
 
+  If `dtype` is not provided, it will attempt to assume the data type of 
+  `on_value` or `off_value`, if one or both are passed in. If none of 
+  `on_value`, `off_value`, or `dtype` are provided, `dtype` will default to the 
+  value `tf.float32`
+
+  Note: If a non-numeric data type output is desired (tf.string, tf.bool, etc.),
+  both `on_value` and `off_value` _must_ be provided to `one_hot`
 
   Examples
   =========
@@ -1893,6 +2002,22 @@ def one_hot(indices, depth, on_value=1, off_value=0,
     ]
   ```
 
+  Using default values for `on_value` and `off_value`:
+
+  ```
+    indices = [0, 1, 2]
+    depth = 3
+  ```
+
+  The output will be
+
+  ```
+    output = 
+    [[1., 0., 0.],
+     [0., 1., 0.],
+     [0., 0., 1.]]
+  ```
+
   Args:
     indices: A `Tensor` of indices.
     depth: A scalar defining the depth of the one hot dimension.
@@ -1907,18 +2032,48 @@ def one_hot(indices, depth, on_value=1, off_value=0,
     output: The one-hot tensor.
 
   Raises:
-    TypeError: If dtype is `tf.string`
+    TypeError: If dtype of either `on_value` or `off_value` don't match `dtype`
+    TypeError: If dtype of `on_value` and `off_value` don't match one another
   """
-  # Check for bad dtype specification
-  if dtype == dtypes.string:
-    raise TypeError("dtype must be a numeric type")
-
   with ops.op_scope([indices, depth, on_value, off_value,
             axis, dtype], name, "one_hot") as name:
-    on_value = ops.convert_to_tensor(on_value, dtype=dtype, name="on_value")
-    off_value = ops.convert_to_tensor(off_value, dtype=dtype, name="off_value")
-    indices = ops.convert_to_tensor(indices, dtype=dtypes.int64, name="indices")
-    depth = ops.convert_to_tensor(depth, dtype=dtypes.int32, name="depth")
+    on_exists = on_value is not None
+    off_exists = off_value is not None
+
+    on_dtype = ops.convert_to_tensor(on_value).dtype.base_dtype if on_exists \
+                  else None
+    off_dtype = ops.convert_to_tensor(off_value).dtype.base_dtype if off_exists\
+                  else None
+    
+    if on_exists or off_exists:
+      if dtype is not None:
+        # Ensure provided on_value and/or off_value match dtype
+        if (on_exists and on_dtype != dtype):
+          raise TypeError("dtype {0} of on_value does not match " \
+                          "dtype parameter {1}".format(on_dtype, dtype))
+        if (off_exists and off_dtype != dtype): 
+          raise TypeError("dtype {0} of off_value does not match " \
+                          "dtype parameter {1}".format(off_dtype, dtype))
+      else:
+        # dtype not provided: automatically assign it
+        dtype = on_dtype if on_exists else off_dtype
+    elif dtype is None:
+      # None of on_value, off_value, or dtype provided. Default dtype to float32
+      dtype = dtypes.float32
+    
+    if not on_exists:
+      # on_value not provided: assign to value 1 of type dtype
+      on_value = ops.convert_to_tensor(1, dtype, name="on_value")
+      on_dtype = dtype
+    if not off_exists:
+      # off_value not provided: assign to value 0 of type dtype
+      off_value = ops.convert_to_tensor(0, dtype, name="off_value")
+      off_dtype = dtype
+
+    if on_dtype != off_dtype:
+      raise TypeError("dtype {0} of on_value does not match " \
+                      "dtype {1} of off_value".format(on_dtype, off_dtype))
+
     return gen_array_ops._one_hot(indices, depth, on_value, 
                                   off_value, axis, name)
 
