@@ -1,4 +1,5 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
+# pylint: disable=g-bad-file-header
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -82,37 +83,6 @@ class FeedingQueueRunnerTestCase(tf.test.TestCase):
           for col_num, col in enumerate(df.columns):
             np.testing.assert_array_equal(expected_rows[col].values,
                                           dq[col_num + 1])
-        coord.request_stop()
-        coord.join(threads)
-
-  def testShuffle(self):
-    array_size = 7
-    batch_size = 3
-    iterations = 1000
-    mean = batch_size * iterations * 1.0 / array_size
-    tolerance = 3
-    with tf.Graph().as_default():
-      array = np.arange(array_size)
-      q = ff.enqueue_data(array, capacity=100, shuffle=True, seed=1234)
-      dq_op = q.dequeue_many(batch_size)
-      with tf.Session() as sess:
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-        counts = {x: 0 for x in array}
-        for _ in range(iterations):
-          dq = sess.run(dq_op)
-          for dqed in dq[1]:
-            self.assertIn(dqed, array)
-            counts[dqed] += 1
-        for k, v in counts.items():
-          self.assertGreater(
-              mean + tolerance, v,
-              "Value {} occurred {} times, expected {:.2f} +/- {}".format(
-                  k, v, mean, tolerance))
-          self.assertLess(
-              mean - tolerance, v,
-              "Value {} occurred {} times, expected {:.2f} +/- {}".format(
-                  k, v, mean, tolerance))
         coord.request_stop()
         coord.join(threads)
 

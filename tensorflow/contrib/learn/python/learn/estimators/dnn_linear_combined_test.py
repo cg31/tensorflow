@@ -1,16 +1,19 @@
-#  Copyright 2015 Google Inc. All Rights Reserved.
+# pylint: disable=g-bad-file-header
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Tests for DNNLinearCombinedEstimators."""
 
 from __future__ import absolute_import
@@ -19,6 +22,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.learn.python.learn.estimators import _sklearn
 
 
 def _get_quantile_based_buckets(feature_values, num_buckets):
@@ -228,6 +232,58 @@ class DNNLinearCombinedClassifierTest(tf.test.TestCase):
     classifier.train(_iris_input_fn, steps=100)
     scores = classifier.evaluate(input_fn=_iris_input_fn, steps=100)
     self.assertGreater(scores['accuracy'], 0.9)
+
+  def testPredict(self):
+    """Tests weight column in evaluation."""
+
+    def _input_fn_train():
+      # Create 4 rows, one of them (y = x), three of them (y=Not(x))
+      target = tf.constant([[1], [0], [0], [0]])
+      features = {'x': tf.ones(shape=[4, 1], dtype=tf.float32),}
+      return features, target
+
+    def _input_fn_predict():
+      features = {'x': tf.ones(shape=[4, 1], dtype=tf.float32),}
+      return features
+
+    classifier = tf.contrib.learn.DNNLinearCombinedClassifier(
+        linear_feature_columns=[tf.contrib.layers.real_valued_column('x')],
+        dnn_feature_columns=[tf.contrib.layers.real_valued_column('x')],
+        dnn_hidden_units=[3, 3])
+
+    classifier.train(input_fn=_input_fn_train, steps=100)
+    probs = classifier.predict_proba(input_fn=_input_fn_predict)
+    self.assertAllClose([[0.75, 0.25]] * 4, probs, 0.01)
+    classes = classifier.predict(input_fn=_input_fn_predict)
+    self.assertListEqual([0] * 4, list(classes))
+
+  def testCustomMetrics(self):
+    """Tests weight column in evaluation."""
+
+    def _input_fn_train():
+      # Create 4 rows, one of them (y = x), three of them (y=Not(x))
+      target = tf.constant([[1], [0], [0], [0]])
+      features = {'x': tf.ones(shape=[4, 1], dtype=tf.float32),}
+      return features, target
+
+    classifier = tf.contrib.learn.DNNLinearCombinedClassifier(
+        linear_feature_columns=[tf.contrib.layers.real_valued_column('x')],
+        dnn_feature_columns=[tf.contrib.layers.real_valued_column('x')],
+        dnn_hidden_units=[3, 3])
+
+    classifier.train(input_fn=_input_fn_train, steps=100)
+    scores = classifier.evaluate(
+        input_fn=_input_fn_train,
+        steps=100,
+        metrics={
+            'my_accuracy': tf.contrib.metrics.streaming_accuracy,
+            'my_precision': tf.contrib.metrics.streaming_precision
+        })
+    self.assertTrue(set(['loss', 'my_accuracy', 'my_precision']).issubset(set(
+        scores.keys())))
+    predictions = classifier.predict(input_fn=_input_fn_train)
+    self.assertEqual(_sklearn.accuracy_score([1, 0, 0, 0], predictions),
+                     scores['my_accuracy'])
 
 
 class DNNLinearCombinedRegressorTest(tf.test.TestCase):

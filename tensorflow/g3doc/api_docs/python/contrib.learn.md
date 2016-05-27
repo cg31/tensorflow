@@ -34,7 +34,7 @@ Parameters:
 
 - - -
 
-#### `tf.contrib.learn.BaseEstimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=32, steps=100, metrics=None)` {#BaseEstimator.evaluate}
+#### `tf.contrib.learn.BaseEstimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=32, steps=None, metrics=None, name=None)` {#BaseEstimator.evaluate}
 
 Evaluates given model with provided evaluation data.
 
@@ -51,6 +51,8 @@ Evaluates given model with provided evaluation data.
 *  <b>`steps`</b>: Number of steps to evalute for.
 *  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
     are used; if {}, no metrics are used.
+*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
+    different data sets, such as evaluate on training data vs test data.
 
 ##### Returns:
 
@@ -93,16 +95,17 @@ Trains a model given training data X and y.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -147,7 +150,7 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.BaseEstimator.predict(x, axis=None, batch_size=None)` {#BaseEstimator.predict}
+#### `tf.contrib.learn.BaseEstimator.predict(x=None, input_fn=None, batch_size=None)` {#BaseEstimator.predict}
 
 Returns predictions for given features.
 
@@ -155,29 +158,12 @@ Returns predictions for given features.
 
 
 *  <b>`x`</b>: features.
-*  <b>`axis`</b>: Axis on which to argmax. (for classification).
+*  <b>`input_fn`</b>: Input function. If set, x must be None.
 *  <b>`batch_size`</b>: Override default batch size.
 
 ##### Returns:
 
   Numpy array of predicted classes or regression values.
-
-
-- - -
-
-#### `tf.contrib.learn.BaseEstimator.predict_proba(x, batch_size=None)` {#BaseEstimator.predict_proba}
-
-Returns prediction probabilities for given features (classification).
-
-##### Args:
-
-
-*  <b>`x`</b>: features.
-*  <b>`batch_size`</b>: Override default batch size.
-
-##### Returns:
-
-  Numpy array of predicted probabilities.
 
 
 - - -
@@ -191,9 +177,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -248,7 +234,7 @@ Parameters:
 
 - - -
 
-#### `tf.contrib.learn.Estimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=32, steps=100, metrics=None)` {#Estimator.evaluate}
+#### `tf.contrib.learn.Estimator.evaluate(x=None, y=None, input_fn=None, feed_fn=None, batch_size=32, steps=None, metrics=None, name=None)` {#Estimator.evaluate}
 
 Evaluates given model with provided evaluation data.
 
@@ -265,6 +251,8 @@ Evaluates given model with provided evaluation data.
 *  <b>`steps`</b>: Number of steps to evalute for.
 *  <b>`metrics`</b>: Dict of metric ops to run. If None, the default metric functions
     are used; if {}, no metrics are used.
+*  <b>`name`</b>: Name of the evaluation if user needs to run multiple evaluation on
+    different data sets, such as evaluate on training data vs test data.
 
 ##### Returns:
 
@@ -307,16 +295,17 @@ Trains a model given training data X and y.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -361,7 +350,7 @@ to converge, and you want to split up training into subparts.
 
 - - -
 
-#### `tf.contrib.learn.Estimator.predict(x, axis=None, batch_size=None)` {#Estimator.predict}
+#### `tf.contrib.learn.Estimator.predict(x=None, input_fn=None, axis=None, batch_size=None)` {#Estimator.predict}
 
 Returns predictions for given features.
 
@@ -369,7 +358,9 @@ Returns predictions for given features.
 
 
 *  <b>`x`</b>: features.
-*  <b>`axis`</b>: Axis on which to argmax. (for classification).
+*  <b>`input_fn`</b>: Input function. If set, x must be None.
+*  <b>`axis`</b>: Axis on which to argmax (for classification).
+        Last axis is used by default.
 *  <b>`batch_size`</b>: Override default batch size.
 
 ##### Returns:
@@ -379,7 +370,7 @@ Returns predictions for given features.
 
 - - -
 
-#### `tf.contrib.learn.Estimator.predict_proba(x, batch_size=None)` {#Estimator.predict_proba}
+#### `tf.contrib.learn.Estimator.predict_proba(x=None, input_fn=None, batch_size=None)` {#Estimator.predict_proba}
 
 Returns prediction probabilities for given features (classification).
 
@@ -387,6 +378,7 @@ Returns prediction probabilities for given features (classification).
 
 
 *  <b>`x`</b>: features.
+*  <b>`input_fn`</b>: Input function. If set, x and y must be None.
 *  <b>`batch_size`</b>: Override default batch size.
 
 ##### Returns:
@@ -405,9 +397,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -511,16 +503,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -667,7 +660,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -684,33 +677,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowClassifier.score(X, y, sample_weight=None)` {#TensorFlowClassifier.score}
-
-Returns the mean accuracy on the given test data and labels.
-
-In multi-label classification, this is the subset accuracy
-which is a harsh metric since you require for each sample that
-each label set be correctly predicted.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True labels for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    Mean accuracy of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowClassifier.set_params(**params)` {#TensorFlowClassifier.set_params}
 
 Set the parameters of this estimator.
@@ -720,9 +686,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -844,16 +810,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -1000,7 +967,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -1017,33 +984,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowDNNClassifier.score(X, y, sample_weight=None)` {#TensorFlowDNNClassifier.score}
-
-Returns the mean accuracy on the given test data and labels.
-
-In multi-label classification, this is the subset accuracy
-which is a harsh metric since you require for each sample that
-each label set be correctly predicted.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True labels for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    Mean accuracy of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowDNNClassifier.set_params(**params)` {#TensorFlowDNNClassifier.set_params}
 
 Set the parameters of this estimator.
@@ -1053,9 +993,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -1177,16 +1117,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -1333,7 +1274,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -1350,37 +1291,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowDNNRegressor.score(X, y, sample_weight=None)` {#TensorFlowDNNRegressor.score}
-
-Returns the coefficient of determination R^2 of the prediction.
-
-The coefficient R^2 is defined as (1 - u/v), where u is the regression
-sum of squares ((y_true - y_pred) ** 2).sum() and v is the residual
-sum of squares ((y_true - y_true.mean()) ** 2).sum().
-Best possible score is 1.0 and it can be negative (because the
-model can be arbitrarily worse). A constant model that always
-predicts the expected value of y, disregarding the input features,
-would get a R^2 score of 0.0.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True values for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    R^2 of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowDNNRegressor.set_params(**params)` {#TensorFlowDNNRegressor.set_params}
 
 Set the parameters of this estimator.
@@ -1390,9 +1300,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -1514,16 +1424,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -1670,7 +1581,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -1696,9 +1607,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -1790,16 +1701,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -1946,7 +1858,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -1963,33 +1875,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowLinearClassifier.score(X, y, sample_weight=None)` {#TensorFlowLinearClassifier.score}
-
-Returns the mean accuracy on the given test data and labels.
-
-In multi-label classification, this is the subset accuracy
-which is a harsh metric since you require for each sample that
-each label set be correctly predicted.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True labels for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    Mean accuracy of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowLinearClassifier.set_params(**params)` {#TensorFlowLinearClassifier.set_params}
 
 Set the parameters of this estimator.
@@ -1999,9 +1884,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -2100,16 +1985,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -2256,7 +2142,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -2273,37 +2159,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowLinearRegressor.score(X, y, sample_weight=None)` {#TensorFlowLinearRegressor.score}
-
-Returns the coefficient of determination R^2 of the prediction.
-
-The coefficient R^2 is defined as (1 - u/v), where u is the regression
-sum of squares ((y_true - y_pred) ** 2).sum() and v is the residual
-sum of squares ((y_true - y_true.mean()) ** 2).sum().
-Best possible score is 1.0 and it can be negative (because the
-model can be arbitrarily worse). A constant model that always
-predicts the expected value of y, disregarding the input features,
-would get a R^2 score of 0.0.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True values for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    R^2 of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowLinearRegressor.set_params(**params)` {#TensorFlowLinearRegressor.set_params}
 
 Set the parameters of this estimator.
@@ -2313,9 +2168,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -2447,16 +2302,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -2603,7 +2459,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -2620,33 +2476,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowRNNClassifier.score(X, y, sample_weight=None)` {#TensorFlowRNNClassifier.score}
-
-Returns the mean accuracy on the given test data and labels.
-
-In multi-label classification, this is the subset accuracy
-which is a harsh metric since you require for each sample that
-each label set be correctly predicted.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True labels for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    Mean accuracy of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowRNNClassifier.set_params(**params)` {#TensorFlowRNNClassifier.set_params}
 
 Set the parameters of this estimator.
@@ -2656,9 +2485,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -2790,16 +2619,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -2946,7 +2776,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -2963,37 +2793,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowRNNRegressor.score(X, y, sample_weight=None)` {#TensorFlowRNNRegressor.score}
-
-Returns the coefficient of determination R^2 of the prediction.
-
-The coefficient R^2 is defined as (1 - u/v), where u is the regression
-sum of squares ((y_true - y_pred) ** 2).sum() and v is the residual
-sum of squares ((y_true - y_true.mean()) ** 2).sum().
-Best possible score is 1.0 and it can be negative (because the
-model can be arbitrarily worse). A constant model that always
-predicts the expected value of y, disregarding the input features,
-would get a R^2 score of 0.0.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True values for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    R^2 of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowRNNRegressor.set_params(**params)` {#TensorFlowRNNRegressor.set_params}
 
 Set the parameters of this estimator.
@@ -3003,9 +2802,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -3104,16 +2903,17 @@ To restart learning, create new estimator.
 
 Get parameters for this estimator.
 
-Parameters
-----------
-deep: boolean, optional
+##### Args:
+
+
+*  <b>`deep`</b>: boolean, optional
     If True, will return the parameters for this estimator and
     contained subobjects that are estimators.
 
-Returns
--------
-params : mapping of string to any
-    Parameter names mapped to their values.
+##### Returns:
+
+  params : mapping of string to any
+  Parameter names mapped to their values.
 
 
 - - -
@@ -3260,7 +3060,7 @@ Restores model from give path.
 
 ##### Returns:
 
-  Estiamator, object of the subclass of TensorFlowEstimator.
+  Estimator, object of the subclass of TensorFlowEstimator.
 
 
 - - -
@@ -3277,37 +3077,6 @@ Saves checkpoints and graph to given path.
 
 - - -
 
-#### `tf.contrib.learn.TensorFlowRegressor.score(X, y, sample_weight=None)` {#TensorFlowRegressor.score}
-
-Returns the coefficient of determination R^2 of the prediction.
-
-The coefficient R^2 is defined as (1 - u/v), where u is the regression
-sum of squares ((y_true - y_pred) ** 2).sum() and v is the residual
-sum of squares ((y_true - y_true.mean()) ** 2).sum().
-Best possible score is 1.0 and it can be negative (because the
-model can be arbitrarily worse). A constant model that always
-predicts the expected value of y, disregarding the input features,
-would get a R^2 score of 0.0.
-
-Parameters
-----------
-X : array-like, shape = (n_samples, n_features)
-    Test samples.
-
-y : array-like, shape = (n_samples) or (n_samples, n_outputs)
-    True values for X.
-
-sample_weight : array-like, shape = [n_samples], optional
-    Sample weights.
-
-Returns
--------
-score : float
-    R^2 of self.predict(X) wrt. y.
-
-
-- - -
-
 #### `tf.contrib.learn.TensorFlowRegressor.set_params(**params)` {#TensorFlowRegressor.set_params}
 
 Set the parameters of this estimator.
@@ -3317,9 +3086,9 @@ The method works on simple estimators as well as on nested objects
 ``<component>__<parameter>`` so that it's possible to update each
 component of a nested object.
 
-Returns
--------
-self
+##### Returns:
+
+  self
 
 
 - - -
@@ -3415,7 +3184,7 @@ Attributes:
 
 - - -
 
-### `tf.contrib.learn.evaluate(graph, output_dir, checkpoint_path, eval_dict, global_step_tensor=None, init_op=None, supervisor_master='', log_every_steps=10, feed_fn=None, max_steps=None)` {#evaluate}
+### `tf.contrib.learn.evaluate(graph, output_dir, checkpoint_path, eval_dict, update_op=None, global_step_tensor=None, supervisor_master='', log_every_steps=10, feed_fn=None, max_steps=None)` {#evaluate}
 
 Evaluate a model loaded from a checkpoint.
 
@@ -3436,13 +3205,13 @@ and written to `output_dir`.
 *  <b>`output_dir`</b>: A string containing the directory to write a summary to.
 *  <b>`checkpoint_path`</b>: A string containing the path to a checkpoint to restore.
     Can be `None` if the graph doesn't require loading any variables.
-*  <b>`eval_dict`</b>: A `dict` mapping string names to tensors to evaluate for in every
-    eval step.
+*  <b>`eval_dict`</b>: A `dict` mapping string names to tensors to evaluate. It is
+    evaluated in every logging step. The result of the final evaluation is
+    returned. If update_op is None, then it's evaluated in every step.
+*  <b>`update_op`</b>: A `Tensor` which is run in every step.
 *  <b>`global_step_tensor`</b>: A `Variable` containing the global step. If `None`,
     one is extracted from the graph using the same logic as in `Supervisor`.
     Used to place eval summaries on training curves.
-*  <b>`init_op`</b>: An op that initializes the graph. If `None`, use `Supervisor`'s
-    default.
 *  <b>`supervisor_master`</b>: The master string to use when preparing the session.
 *  <b>`log_every_steps`</b>: Integer. Output logs every `log_every_steps` evaluation
     steps. The logs contain the `eval_dict` and timing information.
@@ -3455,7 +3224,7 @@ and written to `output_dir`.
   A tuple `(eval_results, global_step)`:
 
 *  <b>`eval_results`</b>: A `dict` mapping `string` to numeric values (`int`, `float`)
-    that are the eval results from the last step of the eval.  None if no
+    that are the result of running eval_dict in the last step. `None` if no
     eval steps were run.
 *  <b>`global_step`</b>: The global step this evaluation corresponds to.
 
@@ -3627,7 +3396,7 @@ Extracts numpy matrix from pandas DataFrame.
 
 - - -
 
-### `tf.contrib.learn.read_batch_examples(file_pattern, batch_size, reader, randomize_input=True, queue_capacity=10000, num_threads=1, name='dequeue_examples')` {#read_batch_examples}
+### `tf.contrib.learn.read_batch_examples(file_pattern, batch_size, reader, randomize_input=True, num_epochs=None, queue_capacity=10000, num_threads=1, name=None)` {#read_batch_examples}
 
 Adds operations to read, queue, batch `Example` protos.
 
@@ -3649,6 +3418,10 @@ All ops are added to the default graph.
 *  <b>`reader`</b>: A function or class that returns an object with
     `read` method, (filename tensor) -> (example tensor).
 *  <b>`randomize_input`</b>: Whether the input should be randomized.
+*  <b>`num_epochs`</b>: Integer specifying the number of times to read through the
+    dataset. If `None`, cycles through the dataset forever.
+    NOTE - If specified, creates a variable that must be initialized, so call
+    `tf.initialize_all_variables()` as shown in the tests.
 *  <b>`queue_capacity`</b>: Capacity for input queue.
 *  <b>`num_threads`</b>: The number of threads enqueuing examples.
 *  <b>`name`</b>: Name of resulting op.
@@ -3665,7 +3438,7 @@ All ops are added to the default graph.
 
 - - -
 
-### `tf.contrib.learn.read_batch_features(file_pattern, batch_size, features, reader, randomize_input=True, queue_capacity=10000, num_threads=1, name='dequeue_examples')` {#read_batch_features}
+### `tf.contrib.learn.read_batch_features(file_pattern, batch_size, features, reader, randomize_input=True, num_epochs=None, queue_capacity=10000, reader_num_threads=1, parser_num_threads=1, name=None)` {#read_batch_features}
 
 Adds operations to read, queue, batch and parse `Example` protos.
 
@@ -3690,8 +3463,13 @@ All ops are added to the default graph.
 *  <b>`reader`</b>: A function or class that returns an object with
     `read` method, (filename tensor) -> (example tensor).
 *  <b>`randomize_input`</b>: Whether the input should be randomized.
+*  <b>`num_epochs`</b>: Integer specifying the number of times to read through the
+    dataset. If None, cycles through the dataset forever. NOTE - If specified,
+    creates a variable that must be initialized, so call
+    tf.initialize_all_variables() as shown in the tests.
 *  <b>`queue_capacity`</b>: Capacity for input queue.
-*  <b>`num_threads`</b>: The number of threads enqueuing examples.
+*  <b>`reader_num_threads`</b>: The number of threads to read examples.
+*  <b>`parser_num_threads`</b>: The number of threads to parse examples.
 *  <b>`name`</b>: Name of resulting op.
 
 ##### Returns:
@@ -3706,7 +3484,7 @@ All ops are added to the default graph.
 
 - - -
 
-### `tf.contrib.learn.read_batch_record_features(file_pattern, batch_size, features, randomize_input=True, queue_capacity=10000, num_threads=1, name='dequeue_record_examples')` {#read_batch_record_features}
+### `tf.contrib.learn.read_batch_record_features(file_pattern, batch_size, features, randomize_input=True, num_epochs=None, queue_capacity=10000, reader_num_threads=1, parser_num_threads=1, name='dequeue_record_examples')` {#read_batch_record_features}
 
 Reads TFRecord, queues, batches and parses `Example` proto.
 
@@ -3721,8 +3499,13 @@ See more detailed description in `read_examples`.
 *  <b>`features`</b>: A `dict` mapping feature keys to `FixedLenFeature` or
     `VarLenFeature` values.
 *  <b>`randomize_input`</b>: Whether the input should be randomized.
+*  <b>`num_epochs`</b>: Integer specifying the number of times to read through the
+    dataset. If None, cycles through the dataset forever. NOTE - If specified,
+    creates a variable that must be initialized, so call
+    tf.initialize_all_variables() as shown in the tests.
 *  <b>`queue_capacity`</b>: Capacity for input queue.
-*  <b>`num_threads`</b>: The number of threads enqueuing examples.
+*  <b>`reader_num_threads`</b>: The number of threads to read examples.
+*  <b>`parser_num_threads`</b>: The number of threads to parse examples.
 *  <b>`name`</b>: Name of resulting op.
 
 ##### Returns:
