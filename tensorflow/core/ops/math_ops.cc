@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -811,7 +811,7 @@ REGISTER_OP("SegmentSum")
     .Input("data: T")
     .Input("segment_ids: Tindices")
     .Output("output: T")
-    .Attr("T: realnumbertype")
+    .Attr("T: numbertype")
     .Attr("Tindices: {int32,int64}")
     .Doc(R"doc(
 Computes the sum along segments of a tensor.
@@ -867,7 +867,7 @@ REGISTER_OP("SegmentProd")
     .Input("data: T")
     .Input("segment_ids: Tindices")
     .Output("output: T")
-    .Attr("T: realnumbertype")
+    .Attr("T: numbertype")
     .Attr("Tindices: {int32,int64}")
     .Doc(R"doc(
 Computes the product along segments of a tensor.
@@ -951,7 +951,7 @@ REGISTER_OP("UnsortedSegmentSum")
     .Input("segment_ids: Tindices")
     .Input("num_segments: int32")
     .Output("output: T")
-    .Attr("T: realnumbertype")
+    .Attr("T: numbertype")
     .Attr("Tindices: {int32,int64}")
     .Doc(R"doc(
 Computes the sum along segments of a tensor.
