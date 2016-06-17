@@ -1078,7 +1078,7 @@ with tf.variable_scope("foo", reuse=True)
 
 If initializer is `None` (the default), the default initializer passed in
 the variable scope will be used. If that one is `None` too, a
-`UniformUnitScalingInitializer` will be used. The initializer can also be
+`uniform_unit_scaling_initializer` will be used. The initializer can also be
 a Tensor, in which case the variable is initialized to this value and shape.
 
 Similarly, if the regularizer is `None` (the default), the default regularizer
@@ -1179,6 +1179,13 @@ Gets an existing variable with this name or create a new one.
 - - -
 
 #### `tf.VariableScope.name` {#VariableScope.name}
+
+
+
+
+- - -
+
+#### `tf.VariableScope.original_name_scope` {#VariableScope.original_name_scope}
 
 
 
@@ -1370,7 +1377,6 @@ def my_op_with_vars(a, b, scope=None):
 *  <b>`partitioner`</b>: The default partitioner for variables within this scope.
 *  <b>`reuse`</b>: `True` or `None`; if `True`, we go into reuse mode for this scope as
     well as all sub-scopes; if `None`, we just inherit the parent scope reuse.
-
 
 ##### Returns:
 
@@ -1895,8 +1901,8 @@ Requires `updates.shape = indices.shape + ref.shape[1:]`.
 Masks elements of `IndexedSlices`.
 
 Given an `IndexedSlices` instance `a`, returns another `IndexedSlices` that
-contains a subset of the slices of `a`. Only the slices at indices specified
-in `mask_indices` are returned.
+contains a subset of the slices of `a`. Only the slices at indices not
+specified in `mask_indices` are returned.
 
 This is useful when you need to extract a subset of slices in an
 `IndexedSlices` object.
@@ -1910,7 +1916,7 @@ a.indices => [12, 26, 37, 45]
 tf.shape(a.values) => [4, 10]
 
 # `b` will be the subset of `a` slices at its second and third indices, so
-# we want to mask of its first and last indices (which are at absolute
+# we want to mask its first and last indices (which are at absolute
 # indices 12, 45)
 b = tf.sparse_mask(a, [12, 45])
 

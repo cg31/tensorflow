@@ -22,6 +22,7 @@ limitations under the License.
 #include <vector>
 #include "tensorflow/core/framework/numeric_op.h"
 #include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/tensor_slice.h"
@@ -344,22 +345,6 @@ typedef Eigen::GpuDevice GPUDevice;
           << ", strides_rows = " << strides[1]                                 \
           << ", strides_cols = " << strides[2]
 
-namespace {
-Status VectorToShape(const TTypes<int32>::ConstVec& sizes, TensorShape* out) {
-  using Index = TTypes<int32>::ConstVec::Index;
-  const Index dims = sizes.size();
-  for (Index i = 0; i < dims; ++i) {
-    if (sizes(i) >= 0) {
-      out->AddDim(sizes(i));
-    } else {
-      return errors::InvalidArgument("Dimension ", sizes(i), " must be >= 0");
-    }
-  }
-
-  return Status::OK();
-}
-}  // namespace
-
 // The fast versions using eigen computations directly. They are only enabled
 // for CPU for now since nvcc times out when trying to compile them.
 // TODO(yangke): enable them for GPUs when we have a faster compiler.
@@ -396,8 +381,8 @@ class Conv2DFastBackpropInputOp : public OpKernel {
             "Conv2DBackpropInput: input_sizes input must be 1-dim, not ",
             input_sizes.dims()));
     TensorShape input_shape;
-    OP_REQUIRES_OK(context,
-                   VectorToShape(input_sizes.vec<int32>(), &input_shape));
+    OP_REQUIRES_OK(context, TensorShapeUtils::MakeShape(
+                                input_sizes.vec<int32>(), &input_shape));
     const TensorShape& filter_shape = filter.shape();
 
     EXTRACT_AND_VERIFY_DIMENSIONS("Conv2DBackpropInput");
@@ -451,8 +436,8 @@ class Conv2DCustomBackpropInputOp : public OpKernel {
             "Conv2DBackpropInput: input_sizes input must be 1-dim, not ",
             input_sizes.dims()));
     TensorShape input_shape;
-    OP_REQUIRES_OK(context,
-                   VectorToShape(input_sizes.vec<int32>(), &input_shape));
+    OP_REQUIRES_OK(context, TensorShapeUtils::MakeShape(
+                                input_sizes.vec<int32>(), &input_shape));
     const TensorShape& filter_shape = filter.shape();
 
     EXTRACT_AND_VERIFY_DIMENSIONS("Conv2DBackpropInput");
@@ -530,12 +515,12 @@ class Conv2DCustomBackpropInputOp : public OpKernel {
     // The output offset corresponding to a single output image.
     const int output_offset = out_rows * out_cols * out_depth;
 
-    auto* filter_data = filter.template flat<T>().data();
-    auto* col_buffer_data = col_buffer.template flat<T>().data();
-    auto* out_backprop_data = out_backprop.template flat<T>().data();
+    const T* filter_data = filter.template flat<T>().data();
+    T* col_buffer_data = col_buffer.template flat<T>().data();
+    const T* out_backprop_data = out_backprop.template flat<T>().data();
 
     auto in_backprop_flat = in_backprop->template flat<T>();
-    auto* input_backprop_data = in_backprop_flat.data();
+    T* input_backprop_data = in_backprop_flat.data();
     in_backprop_flat.device(context->eigen_device<Device>()) =
         in_backprop_flat.constant(T(0));
 
@@ -622,35 +607,24 @@ class Conv2DCustomBackpropInputOp : public OpKernel {
   TF_DISALLOW_COPY_AND_ASSIGN(Conv2DCustomBackpropInputOp);
 };
 
-REGISTER_KERNEL_BUILDER(
-    Name("Conv2DBackpropInput").Device(DEVICE_CPU).TypeConstraint<float>("T"),
-    Conv2DCustomBackpropInputOp<CPUDevice, float>);
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")
-                            .Device(DEVICE_CPU)
-                            .TypeConstraint<Eigen::half>("T"),
-                        Conv2DCustomBackpropInputOp<CPUDevice, Eigen::half>);
+#define REGISTER_CPU_KERNELS(T)                                              \
+  REGISTER_KERNEL_BUILDER(                                                   \
+      Name("Conv2DBackpropInput").Device(DEVICE_CPU).TypeConstraint<T>("T"), \
+      Conv2DCustomBackpropInputOp<CPUDevice, T>);                            \
+  REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")                        \
+                              .Device(DEVICE_CPU)                            \
+                              .Label("custom")                               \
+                              .TypeConstraint<T>("T"),                       \
+                          Conv2DCustomBackpropInputOp<CPUDevice, T>);        \
+  REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")                        \
+                              .Device(DEVICE_CPU)                            \
+                              .Label("eigen_tensor")                         \
+                              .TypeConstraint<T>("T"),                       \
+                          Conv2DFastBackpropInputOp<CPUDevice, T>);
 
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")
-                            .Device(DEVICE_CPU)
-                            .Label("custom")
-                            .TypeConstraint<float>("T"),
-                        Conv2DCustomBackpropInputOp<CPUDevice, float>);
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")
-                            .Device(DEVICE_CPU)
-                            .Label("custom")
-                            .TypeConstraint<Eigen::half>("T"),
-                        Conv2DCustomBackpropInputOp<CPUDevice, Eigen::half>);
-
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")
-                            .Device(DEVICE_CPU)
-                            .Label("eigen_tensor")
-                            .TypeConstraint<float>("T"),
-                        Conv2DFastBackpropInputOp<CPUDevice, float>);
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropInput")
-                            .Device(DEVICE_CPU)
-                            .Label("eigen_tensor")
-                            .TypeConstraint<Eigen::half>("T"),
-                        Conv2DFastBackpropInputOp<CPUDevice, Eigen::half>);
+TF_CALL_half(REGISTER_CPU_KERNELS);
+TF_CALL_float(REGISTER_CPU_KERNELS);
+#undef REGISTER_CPU_KERNELS
 
 template <typename Device, class T>
 class Conv2DFastBackpropFilterOp : public OpKernel {
@@ -685,8 +659,8 @@ class Conv2DFastBackpropFilterOp : public OpKernel {
             filter_sizes.dims()));
     const TensorShape& input_shape = input.shape();
     TensorShape filter_shape;
-    OP_REQUIRES_OK(context,
-                   VectorToShape(filter_sizes.vec<int32>(), &filter_shape));
+    OP_REQUIRES_OK(context, TensorShapeUtils::MakeShape(
+                                filter_sizes.vec<int32>(), &filter_shape));
 
     EXTRACT_AND_VERIFY_DIMENSIONS("Conv2DBackpropFilter");
     Tensor* filter_backprop = nullptr;
@@ -742,8 +716,8 @@ class Conv2DCustomBackpropFilterOp : public OpKernel {
             filter_sizes.dims()));
     const TensorShape& input_shape = input.shape();
     TensorShape filter_shape;
-    OP_REQUIRES_OK(context,
-                   VectorToShape(filter_sizes.vec<int32>(), &filter_shape));
+    OP_REQUIRES_OK(context, TensorShapeUtils::MakeShape(
+                                filter_sizes.vec<int32>(), &filter_shape));
 
     EXTRACT_AND_VERIFY_DIMENSIONS("Conv2DCustomBackpropFilter");
     Tensor* filter_backprop;
@@ -801,10 +775,10 @@ class Conv2DCustomBackpropFilterOp : public OpKernel {
     // The output offset corresponding to a single output image.
     const int output_offset = out_rows * out_cols * out_depth;
 
-    auto* input_data = input.template flat<T>().data();
-    auto* col_buffer_data = col_buffer.template flat<T>().data();
-    auto* out_backprop_data = out_backprop.template flat<T>().data();
-    auto* filter_backprop_data = filter_backprop->template flat<T>().data();
+    const T* input_data = input.template flat<T>().data();
+    T* col_buffer_data = col_buffer.template flat<T>().data();
+    const T* out_backprop_data = out_backprop.template flat<T>().data();
+    T* filter_backprop_data = filter_backprop->template flat<T>().data();
 
     typedef Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor>,
                              Eigen::Unaligned>
@@ -867,35 +841,24 @@ class Conv2DCustomBackpropFilterOp : public OpKernel {
   TF_DISALLOW_COPY_AND_ASSIGN(Conv2DCustomBackpropFilterOp);
 };
 
-REGISTER_KERNEL_BUILDER(
-    Name("Conv2DBackpropFilter").Device(DEVICE_CPU).TypeConstraint<float>("T"),
-    Conv2DCustomBackpropFilterOp<CPUDevice, float>);
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")
-                            .Device(DEVICE_CPU)
-                            .TypeConstraint<Eigen::half>("T"),
-                        Conv2DCustomBackpropFilterOp<CPUDevice, Eigen::half>);
+#define REGISTER_CPU_KERNELS(T)                                               \
+  REGISTER_KERNEL_BUILDER(                                                    \
+      Name("Conv2DBackpropFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), \
+      Conv2DCustomBackpropFilterOp<CPUDevice, T>);                            \
+  REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")                        \
+                              .Device(DEVICE_CPU)                             \
+                              .Label("custom")                                \
+                              .TypeConstraint<T>("T"),                        \
+                          Conv2DCustomBackpropFilterOp<CPUDevice, T>);        \
+  REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")                        \
+                              .Device(DEVICE_CPU)                             \
+                              .Label("eigen_tensor")                          \
+                              .TypeConstraint<T>("T"),                        \
+                          Conv2DFastBackpropFilterOp<CPUDevice, T>);
 
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")
-                            .Device(DEVICE_CPU)
-                            .Label("custom")
-                            .TypeConstraint<float>("T"),
-                        Conv2DCustomBackpropFilterOp<CPUDevice, float>);
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")
-                            .Device(DEVICE_CPU)
-                            .Label("custom")
-                            .TypeConstraint<Eigen::half>("T"),
-                        Conv2DCustomBackpropFilterOp<CPUDevice, Eigen::half>);
-
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")
-                            .Device(DEVICE_CPU)
-                            .Label("eigen_tensor")
-                            .TypeConstraint<float>("T"),
-                        Conv2DFastBackpropFilterOp<CPUDevice, float>);
-REGISTER_KERNEL_BUILDER(Name("Conv2DBackpropFilter")
-                            .Device(DEVICE_CPU)
-                            .Label("eigen_tensor")
-                            .TypeConstraint<Eigen::half>("T"),
-                        Conv2DFastBackpropFilterOp<CPUDevice, Eigen::half>);
+TF_CALL_half(REGISTER_CPU_KERNELS);
+TF_CALL_float(REGISTER_CPU_KERNELS);
+#undef REGISTER_CPU_KERNELS
 
 // GPU definitions of both ops.
 #if GOOGLE_CUDA
@@ -936,8 +899,8 @@ class Conv2DSlowBackpropInputOp : public OpKernel {
             "Conv2DBackpropInput: input_sizes input must be 1-dim, not ",
             input_sizes.dims()));
     TensorShape input_shape;
-    OP_REQUIRES_OK(context,
-                   VectorToShape(input_sizes.vec<int32>(), &input_shape));
+    OP_REQUIRES_OK(context, TensorShapeUtils::MakeShape(
+                                input_sizes.vec<int32>(), &input_shape));
     const TensorShape& filter_shape = filter.shape();
 
     EXTRACT_AND_VERIFY_DIMENSIONS("Conv2DBackpropInput");
@@ -1248,8 +1211,8 @@ class Conv2DSlowBackpropFilterOp : public OpKernel {
             filter_sizes.dims()));
     const TensorShape& input_shape = input.shape();
     TensorShape filter_shape;
-    OP_REQUIRES_OK(context,
-                   VectorToShape(filter_sizes.vec<int32>(), &filter_shape));
+    OP_REQUIRES_OK(context, TensorShapeUtils::MakeShape(
+                                filter_sizes.vec<int32>(), &filter_shape));
 
     EXTRACT_AND_VERIFY_DIMENSIONS("Conv2DBackpropFilter");
     Tensor* filter_backprop = nullptr;

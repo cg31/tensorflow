@@ -596,6 +596,208 @@ Variance of the distribution.
 
 - - -
 
+### `class tf.contrib.distributions.Categorical` {#Categorical}
+
+Categorical distribution.
+
+The categorical distribution is parameterized by the log-probabilities
+of a set of classes.
+
+Note, the following methods of the base class aren't implemented:
+  * mean
+  * cdf
+  * log_cdf
+- - -
+
+#### `tf.contrib.distributions.Categorical.__init__(logits, name='Categorical', dtype=tf.int32)` {#Categorical.__init__}
+
+Initialize Categorical distributions using class log-probabilities.
+
+##### Args:
+
+
+*  <b>`logits`</b>: An N-D `Tensor` representing the log probabilities of a set of
+      Categorical distributions. The first N - 1 dimensions index into a
+      batch of independent distributions and the last dimension indexes
+      into the classes.
+*  <b>`name`</b>: A name for this distribution (optional).
+*  <b>`dtype`</b>: The type of the event samples (default: int32).
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.batch_shape(name='batch_shape')` {#Categorical.batch_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.cdf(value, name='cdf')` {#Categorical.cdf}
+
+Cumulative distribution function.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.dtype` {#Categorical.dtype}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.entropy(name='sample')` {#Categorical.entropy}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.event_shape(name='event_shape')` {#Categorical.event_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.get_batch_shape()` {#Categorical.get_batch_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.get_event_shape()` {#Categorical.get_event_shape}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.is_reparameterized` {#Categorical.is_reparameterized}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.log_cdf(value, name='log_cdf')` {#Categorical.log_cdf}
+
+Log CDF.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.log_likelihood(value, name='log_likelihood')` {#Categorical.log_likelihood}
+
+Log likelihood of this distribution (same as log_pmf).
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.log_pmf(k, name='log_pmf')` {#Categorical.log_pmf}
+
+Log-probability of class `k`.
+
+##### Args:
+
+
+*  <b>`k`</b>: `int32` or `int64` Tensor with shape = `self.batch_shape()`.
+*  <b>`name`</b>: A name for this operation (optional).
+
+##### Returns:
+
+  The log-probabilities of the classes indexed by `k`
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.logits` {#Categorical.logits}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.mean(name='mean')` {#Categorical.mean}
+
+Mean of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.mode(name='mode')` {#Categorical.mode}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.name` {#Categorical.name}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.num_classes` {#Categorical.num_classes}
+
+
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.pmf(k, name='pmf')` {#Categorical.pmf}
+
+Probability of class `k`.
+
+##### Args:
+
+
+*  <b>`k`</b>: `int32` or `int64` Tensor with shape = `self.batch_shape()`.
+*  <b>`name`</b>: A name for this operation (optional).
+
+##### Returns:
+
+  The probabilities of the classes indexed by `k`
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.sample(n, seed=None, name='sample')` {#Categorical.sample}
+
+Sample `n` observations from the Categorical distribution.
+
+##### Args:
+
+
+*  <b>`n`</b>: 0-D.  Number of independent samples to draw for each distribution.
+*  <b>`seed`</b>: Random seed (optional).
+*  <b>`name`</b>: A name for this operation (optional).
+
+##### Returns:
+
+  An `int64` `Tensor` with shape `[n, batch_shape, event_shape]`
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.std(name='std')` {#Categorical.std}
+
+Standard deviation of the distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Categorical.variance(name='variance')` {#Categorical.variance}
+
+Variance of the distribution.
+
+
+
+- - -
+
 ### `class tf.contrib.distributions.Chi2` {#Chi2}
 
 The Chi2 distribution with degrees of freedom df.
@@ -849,14 +1051,17 @@ Pdf of observations in `x` under these Gamma distribution(s).
 
 #### `tf.contrib.distributions.Chi2.sample(n, seed=None, name='sample')` {#Chi2.sample}
 
-Generate `n` samples.
+Draws `n` samples from the Gamma distribution(s).
+
+See the doc for tf.random_gamma for further detail.
 
 ##### Args:
 
 
-*  <b>`n`</b>: scalar. Number of samples to draw from each distribution.
-*  <b>`seed`</b>: Python integer seed for RNG
-*  <b>`name`</b>: name to give to the op.
+*  <b>`n`</b>: Python integer, the number of observations to sample from each
+    distribution.
+*  <b>`seed`</b>: Python integer, the random seed for this operation.
+*  <b>`name`</b>: Optional name for the operation.
 
 ##### Returns:
 
@@ -1445,14 +1650,17 @@ Pdf of observations in `x` under these Gamma distribution(s).
 
 #### `tf.contrib.distributions.Gamma.sample(n, seed=None, name='sample')` {#Gamma.sample}
 
-Generate `n` samples.
+Draws `n` samples from the Gamma distribution(s).
+
+See the doc for tf.random_gamma for further detail.
 
 ##### Args:
 
 
-*  <b>`n`</b>: scalar. Number of samples to draw from each distribution.
-*  <b>`seed`</b>: Python integer seed for RNG
-*  <b>`name`</b>: name to give to the op.
+*  <b>`n`</b>: Python integer, the number of observations to sample from each
+    distribution.
+*  <b>`seed`</b>: Python integer, the random seed for this operation.
+*  <b>`name`</b>: Optional name for the operation.
 
 ##### Returns:
 
@@ -2968,5 +3176,67 @@ will broadcast in the case of multidimensional sets of parameters.
 
 *  <b>`TypeError`</b>: if dtype of `s` does not match `dtype`, or `prior` is not a
     Normal object.
+
+
+
+## Kullback Leibler Divergence
+
+- - -
+
+### `tf.contrib.distributions.kl(dist_a, dist_b, allow_nan=False, name=None)` {#kl}
+
+Get the KL-divergence KL(dist_a || dist_b).
+
+##### Args:
+
+
+*  <b>`dist_a`</b>: instance of distributions.BaseDistribution.
+*  <b>`dist_b`</b>: instance of distributions.BaseDistribution.
+*  <b>`allow_nan`</b>: If False (default), a runtime error is raised
+    if the KL returns NaN values for any batch entry of the given
+    distributions.  If True, the KL may return a NaN for the given entry.
+*  <b>`name`</b>: (optional) Name scope to use for created operations.
+
+##### Returns:
+
+  A Tensor with the batchwise KL-divergence between dist_a and dist_b.
+
+##### Raises:
+
+
+*  <b>`TypeError`</b>: If dist_a or dist_b is not an instance of BaseDistribution.
+*  <b>`NotImplementedError`</b>: If no KL method is defined for distribution types
+    of dist_a and dist_b.
+
+
+- - -
+
+### `class tf.contrib.distributions.RegisterKL` {#RegisterKL}
+
+Decorator to register a KL divergence implementation function.
+
+Usage:
+
+@distributions.RegisterKL(distributions.Normal, distributions.Normal)
+def _kl_normal_mvn(norm_a, norm_b):
+  # Return KL(norm_a || norm_b)
+- - -
+
+#### `tf.contrib.distributions.RegisterKL.__init__(dist_cls_a, dist_cls_b)` {#RegisterKL.__init__}
+
+Initialize the KL registrar.
+
+##### Args:
+
+
+*  <b>`dist_cls_a`</b>: the class of the first argument of the KL divergence.
+*  <b>`dist_cls_b`</b>: the class of the second argument of the KL divergence.
+
+##### Raises:
+
+
+*  <b>`TypeError`</b>: if dist_cls_a or dist_cls_b are not subclasses of
+    BaseDistribution.
+
 
 
