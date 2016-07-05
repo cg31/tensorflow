@@ -1,4 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,20 +22,21 @@ import math
 
 import numpy as np
 
-from tensorflow.contrib.distributions.python.ops.distribution import ContinuousDistribution  # pylint: disable=line-too-long
+from tensorflow.contrib.distributions.python.ops import distribution  # pylint: disable=line-too-long
 from tensorflow.contrib.framework.python.framework import tensor_util as contrib_tensor_util  # pylint: disable=line-too-long
+from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import check_ops
-from tensorflow.python.ops import constant_op
+from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
 from tensorflow.python.ops import special_math_ops
 
 
-class StudentT(ContinuousDistribution):
+class StudentT(distribution.ContinuousDistribution):
   """Student's t distribution with degree-of-freedom parameter df.
 
   #### Mathematical details
@@ -83,7 +84,14 @@ class StudentT(ContinuousDistribution):
   ```
   """
 
-  def __init__(self, df, mu, sigma, name="StudentT"):
+  def __init__(
+      self,
+      df,
+      mu,
+      sigma,
+      strict=True,
+      strict_statistics=True,
+      name="StudentT"):
     """Construct Student's t distributions.
 
     The distributions have degree of freedom `df`, mean `mu`, and scale `sigma`.
@@ -98,23 +106,41 @@ class StudentT(ContinuousDistribution):
       sigma: `float` or `double` tensor, the scaling factor for the
         distribution(s). `sigma` must contain only positive values.
         Note that `sigma` is not the standard deviation of this distribution.
+      strict: Whether to assert that `df > 0, sigma > 0`. If `strict` is False
+        and inputs are invalid, correct behavior is not guaranteed.
+      strict_statistics:  Boolean, default True.  If True, raise an exception if
+        a statistic (e.g. mean/mode/etc...) is undefined for any batch member.
+        If False, batch members with valid parameters leading to undefined
+        statistics will return NaN for this statistic.
       name: The name to give Ops created by the initializer.
 
     Raises:
       TypeError: if mu and sigma are different dtypes.
     """
-    super(StudentT, self).__init__()
+    self._strict_statistics = strict_statistics
+    self._strict = strict
     with ops.op_scope([df, mu, sigma], name) as scope:
-      with ops.control_dependencies([check_ops.assert_positive(df),
-                                     check_ops.assert_positive(sigma)]):
+      with ops.control_dependencies(
+          [check_ops.assert_positive(df), check_ops.assert_positive(sigma)]
+          if strict else []):
         self._df = ops.convert_to_tensor(df, name="df")
         self._mu = ops.convert_to_tensor(mu, name="mu")
         self._sigma = ops.convert_to_tensor(sigma, name="sigma")
         contrib_tensor_util.assert_same_float_dtype(
             (self._df, self._mu, self._sigma))
       self._name = scope
-      self._batch_shape = self._ones().get_shape()
-      self._event_shape = tensor_shape.TensorShape([])
+      self._get_batch_shape = self._ones().get_shape()
+      self._get_event_shape = tensor_shape.TensorShape([])
+
+  @property
+  def strict_statistics(self):
+    """Boolean describing behavior when a stat is undefined for batch member."""
+    return self._strict_statistics
+
+  @property
+  def strict(self):
+    """Boolean describing behavior on invalid input."""
+    return self._strict
 
   @property
   def name(self):
@@ -139,31 +165,95 @@ class StudentT(ContinuousDistribution):
     """Scaling factors of these Student's t distribution(s)."""
     return self._sigma
 
-  @property
   def mean(self, name="mean"):
-    with ops.name_scope(self.name):
-      return math_ops.mul(self._mu, self._ones(), name=name)
+    """Mean of the distribution.
 
-  @property
-  def variance(self, name="var"):
+    The mean of Student's T equals `mu` if `df > 1`, otherwise it is `NaN`.  If
+    `self.strict_statistics=True`, then an exception will be raised rather than
+    returning `NaN`.
+
+    Args:
+      name:  A name to give this op.
+
+    Returns:
+      The mean for every batch member, a `Tensor` with same `dtype` as self.
+    """
     with ops.name_scope(self.name):
-      return math_ops.select(
-          (self._zeros() + self._df > 2),
-          self._zeros() + math_ops.square(self._sigma) * self._df /
-          (self._df - 2),
-          self._zeros() + np.inf,
-          name=name)
+      with ops.op_scope([self._mu], name):
+        result_if_defined = self._mu * self._ones()
+        if self.strict_statistics:
+          one = ops.convert_to_tensor(1.0, dtype=self.dtype)
+          return control_flow_ops.with_dependencies(
+              [check_ops.assert_less(one, self._df)], result_if_defined)
+        else:
+          df_gt_1 = self._df > self._ones()
+          nan = np.nan + self._zeros()
+          return math_ops.select(df_gt_1, result_if_defined, nan)
+
+  def mode(self, name="mode"):
+    with ops.name_scope(self.name):
+      with ops.op_scope([self._mu], name):
+        return array_ops.identity(self._mu)
+
+  def variance(self, name="variance"):
+    """Variance of the distribution.
+
+    Variance for Student's T equals
+
+    ```
+    df / (df - 2), when df > 2
+    infinity, when 1 < df <= 2
+    NaN, when df <= 1
+    ```
+
+    The NaN state occurs because mean is undefined for `df <= 1`, and if
+    `self.strict_statistics` is `True`, an exception will be raised if any batch
+    members fall into this state.
+
+    Args:
+      name:  A name for this op.
+
+    Returns:
+      The variance for every batch member, a `Tensor` with same `dtype` as self.
+    """
+    with ops.name_scope(self.name):
+      with ops.op_scope([self._df, self._sigma], name):
+        result_where_finite = (
+            self._zeros()
+            + math_ops.square(self._sigma) * self._df / (self._df - 2))
+        # When 1 < df <= 2, variance is infinite.
+        result_where_defined = math_ops.select(
+            self._zeros() + self._df > 2,
+            result_where_finite,
+            self._zeros() + np.inf)
+
+        if self.strict_statistics:
+          one = ops.convert_to_tensor(1.0, self.dtype)
+          return control_flow_ops.with_dependencies(
+              [check_ops.assert_less(one, self._df)], result_where_defined)
+        else:
+          return math_ops.select(
+              (self._zeros() + self._df > 1),
+              result_where_defined,
+              self._zeros() + np.nan)
+
+  def std(self, name="std"):
+    with ops.name_scope(self.name):
+      with ops.op_scope([], name):
+        return math_ops.sqrt(self.variance())
 
   def batch_shape(self, name="batch_shape"):
     with ops.name_scope(self.name):
-      return array_ops.shape(self._ones(), name=name)
+      with ops.op_scope([], name):
+        return array_ops.shape(self._ones())
 
   def get_batch_shape(self):
-    return self._batch_shape
+    return self._get_batch_shape
 
   def event_shape(self, name="event_shape"):
     with ops.name_scope(self.name):
-      return constant_op.constant(1, name=name)
+      with ops.op_scope([], name):
+        return constant_op.constant([], dtype=math_ops.int32)
 
   def get_event_shape(self):
     return self._event_shape
@@ -178,8 +268,8 @@ class StudentT(ContinuousDistribution):
     Returns:
       log_pdf: tensor of dtype `dtype`, the log-PDFs of `x`.
     """
-    with ops.op_scope([self._df, self._mu, self._sigma, x], self.name):
-      with ops.name_scope(name):
+    with ops.name_scope(self.name):
+      with ops.op_scope([self._df, self._mu, self._sigma, x], name):
         x = ops.convert_to_tensor(x)
         if x.dtype != self.dtype:
           raise TypeError("Input x dtype does not match dtype: %s vs. %s" %
@@ -202,8 +292,8 @@ class StudentT(ContinuousDistribution):
     Returns:
       pdf: tensor of dtype `dtype`, the pdf values of `x`.
     """
-    with ops.op_scope([self._df, self._mu, self._sigma, x], self.name):
-      with ops.name_scope(name):
+    with ops.name_scope(self.name):
+      with ops.op_scope([self._df, self._mu, self._sigma, x], name):
         x = ops.convert_to_tensor(x)
         if x.dtype != self.dtype:
           raise TypeError("Input x dtype does not match dtype: %s vs. %s" %
@@ -224,8 +314,8 @@ class StudentT(ContinuousDistribution):
     Returns:
       entropy: tensor of dtype `dtype`, the entropy.
     """
-    with ops.op_scope([self._df, self._sigma], self.name):
-      with ops.name_scope(name):
+    with ops.name_scope(self.name):
+      with ops.op_scope([self._df, self._sigma], name):
         u = array_ops.expand_dims(self._df + self._zeros(), -1)
         v = array_ops.expand_dims(self._ones(), -1)
         beta_arg = array_ops.concat(len(u.get_shape()) - 1, [u, v]) / 2
@@ -247,8 +337,8 @@ class StudentT(ContinuousDistribution):
       samples: a `Tensor` of shape `(n,) + self.batch_shape + self.event_shape`
           with values of type `self.dtype`.
     """
-    with ops.op_scope([self._df, self._mu, self._sigma, n], self.name):
-      with ops.name_scope(name):
+    with ops.name_scope(self.name):
+      with ops.op_scope([self._df, self._mu, self._sigma, n], name):
         n = ops.convert_to_tensor(n, name="n")
         n_val = tensor_util.constant_value(n)
 

@@ -8,9 +8,23 @@ Note that the Exponential distribution is a special case of the Gamma
 distribution, with Exponential(lam) = Gamma(1, lam).
 - - -
 
-#### `tf.contrib.distributions.Exponential.__init__(lam, name='Exponential')` {#Exponential.__init__}
+#### `tf.contrib.distributions.Exponential.__init__(lam, strict=True, strict_statistics=True, name='Exponential')` {#Exponential.__init__}
+
+Construct Exponential distribution with parameter `lam`.
+
+##### Args:
 
 
+*  <b>`lam`</b>: `float` or `double` tensor, the rate of the distribution(s).
+    `lam` must contain only positive values.
+*  <b>`strict`</b>: Whether to assert that `lam > 0`, and that `x > 0` in the
+    methods `pdf(x)` and `log_pdf(x)`.  If `strict` is False
+    and the inputs are invalid, correct behavior is not guaranteed.
+*  <b>`strict_statistics`</b>: Boolean, default True.  If True, raise an exception if
+    a statistic (e.g. mean/mode/etc...) is undefined for any batch member.
+    If False, batch members with valid parameters leading to undefined
+    statistics will return NaN for this statistic.
+*  <b>`name`</b>: The name to prepend to all ops created by this distribution.
 
 
 - - -
@@ -173,6 +187,13 @@ Log CDF of observations `x` under these Gamma distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Exponential.log_likelihood(value, name='log_likelihood')` {#Exponential.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
 #### `tf.contrib.distributions.Exponential.log_pdf(x, name='log_pdf')` {#Exponential.log_pdf}
 
 Log pdf of observations in `x` under these Gamma distribution(s).
@@ -196,9 +217,29 @@ Log pdf of observations in `x` under these Gamma distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Exponential.mean` {#Exponential.mean}
+#### `tf.contrib.distributions.Exponential.mean(name='mean')` {#Exponential.mean}
 
 Mean of each batch member.
+
+
+- - -
+
+#### `tf.contrib.distributions.Exponential.mode(name='mode')` {#Exponential.mode}
+
+Mode of each batch member.
+
+The mode of a gamma distribution is `(alpha - 1) / beta` when `alpha > 1`,
+and `NaN` otherwise.  If `self.strict_statistics` is `True`, an exception
+will be raised rather than returning `NaN`.
+
+##### Args:
+
+
+*  <b>`name`</b>: A name to give this op.
+
+##### Returns:
+
+  The mode for every batch member, a `Tensor` with same `dtype` as self.
 
 
 - - -
@@ -253,7 +294,28 @@ Sample `n` observations from the Exponential Distributions.
 
 - - -
 
-#### `tf.contrib.distributions.Exponential.variance` {#Exponential.variance}
+#### `tf.contrib.distributions.Exponential.std(name='std')` {#Exponential.std}
+
+Standard deviation of this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Exponential.strict` {#Exponential.strict}
+
+Boolean describing behavior on invalid input.
+
+
+- - -
+
+#### `tf.contrib.distributions.Exponential.strict_statistics` {#Exponential.strict_statistics}
+
+Boolean describing behavior when a stat is undefined for batch member.
+
+
+- - -
+
+#### `tf.contrib.distributions.Exponential.variance(name='variance')` {#Exponential.variance}
 
 Variance of each batch member.
 

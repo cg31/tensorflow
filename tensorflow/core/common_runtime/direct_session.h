@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ limitations under the License.
 namespace tensorflow {
 
 class CostModel;
+class DebugGateway;
 class Device;
 
 class DirectSession : public Session {
@@ -162,7 +163,8 @@ class DirectSession : public Session {
 
   // Initializes the base execution state given the 'graph',
   // if not already initialized.
-  void MaybeInitializeExecutionState(const GraphDef& graph);
+  void MaybeInitializeExecutionState(const GraphDef& graph)
+      EXCLUSIVE_LOCKS_REQUIRED(graph_def_lock_);
 
   // Retrieves an already existing set of executors to run 'inputs' and
   // 'outputs', or creates and caches them for future use.
@@ -249,7 +251,8 @@ class DirectSession : public Session {
   std::unordered_map<string, string> stateful_placements_ GUARDED_BY(mu_);
 
   // Execution_state; used when placing the entire graph.
-  std::unique_ptr<SimpleGraphExecutionState> execution_state_;
+  std::unique_ptr<SimpleGraphExecutionState> execution_state_
+      GUARDED_BY(graph_def_lock_);
   std::unique_ptr<FunctionLibraryDefinition> flib_def_;
 
   // For generating unique names.
@@ -264,7 +267,11 @@ class DirectSession : public Session {
   // Manages all the cost models for the graphs executed in this session.
   CostModelManager cost_model_manager_;
 
+  Executor::Args::NodeOutputsCallback node_outputs_callback_ = nullptr;
+
   TF_DISALLOW_COPY_AND_ASSIGN(DirectSession);
+
+  friend class DebugGateway;
 };
 
 }  // end namespace tensorflow

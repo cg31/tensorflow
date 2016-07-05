@@ -42,7 +42,7 @@ dist.pdf(3.0)
 ```
 - - -
 
-#### `tf.contrib.distributions.Normal.__init__(mu, sigma, name=None)` {#Normal.__init__}
+#### `tf.contrib.distributions.Normal.__init__(mu, sigma, strict=True, strict_statistics=True, name='Normal')` {#Normal.__init__}
 
 Construct Normal distributions with mean and stddev `mu` and `sigma`.
 
@@ -55,6 +55,12 @@ broadcasting (e.g. `mu + sigma` is a valid operation).
 *  <b>`mu`</b>: `float` or `double` tensor, the means of the distribution(s).
 *  <b>`sigma`</b>: `float` or `double` tensor, the stddevs of the distribution(s).
     sigma must contain only positive values.
+*  <b>`strict`</b>: Whether to assert that `sigma > 0`. If `strict` is False,
+    correct output is not guaranteed when input is invalid.
+*  <b>`strict_statistics`</b>: Boolean, default True.  If True, raise an exception if
+    a statistic (e.g. mean/mode/etc...) is undefined for any batch member.
+    If False, batch members with valid parameters leading to undefined
+    statistics will return NaN for this statistic.
 *  <b>`name`</b>: The name to give Ops created by the initializer.
 
 ##### Raises:
@@ -65,7 +71,26 @@ broadcasting (e.g. `mu + sigma` is a valid operation).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.cdf(x, name=None)` {#Normal.cdf}
+#### `tf.contrib.distributions.Normal.batch_shape(name='batch_shape')` {#Normal.batch_shape}
+
+Batch dimensions of this instance as a 1-D int32 `Tensor`.
+
+The product of the dimensions of the `batch_shape` is the number of
+independent distributions of this kind the instance represents.
+
+##### Args:
+
+
+*  <b>`name`</b>: name to give to the op.
+
+##### Returns:
+
+  `Tensor` `batch_shape`
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.cdf(x, name='cdf')` {#Normal.cdf}
 
 CDF of observations in `x` under these Normal distribution(s).
 
@@ -90,7 +115,7 @@ CDF of observations in `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.entropy(name=None)` {#Normal.entropy}
+#### `tf.contrib.distributions.Normal.entropy(name='entropy')` {#Normal.entropy}
 
 The entropy of Normal distribution(s).
 
@@ -107,6 +132,48 @@ The entropy of Normal distribution(s).
 
 - - -
 
+#### `tf.contrib.distributions.Normal.event_shape(name='event_shape')` {#Normal.event_shape}
+
+Shape of a sample from a single distribution as a 1-D int32 `Tensor`.
+
+##### Args:
+
+
+*  <b>`name`</b>: name to give to the op.
+
+##### Returns:
+
+  `Tensor` `event_shape`
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.get_batch_shape()` {#Normal.get_batch_shape}
+
+`TensorShape` available at graph construction time.
+
+Same meaning as `batch_shape`. May be only partially defined.
+
+##### Returns:
+
+  batch shape
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.get_event_shape()` {#Normal.get_event_shape}
+
+`TensorShape` available at graph construction time.
+
+Same meaning as `event_shape`. May be only partially defined.
+
+##### Returns:
+
+  event shape
+
+
+- - -
+
 #### `tf.contrib.distributions.Normal.is_reparameterized` {#Normal.is_reparameterized}
 
 
@@ -114,7 +181,7 @@ The entropy of Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.log_cdf(x, name=None)` {#Normal.log_cdf}
+#### `tf.contrib.distributions.Normal.log_cdf(x, name='log_cdf')` {#Normal.log_cdf}
 
 Log CDF of observations `x` under these Normal distribution(s).
 
@@ -132,7 +199,14 @@ Log CDF of observations `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.log_pdf(x, name=None)` {#Normal.log_pdf}
+#### `tf.contrib.distributions.Normal.log_likelihood(value, name='log_likelihood')` {#Normal.log_likelihood}
+
+Log likelihood of this distribution (same as log_pdf).
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.log_pdf(x, name='log_pdf')` {#Normal.log_pdf}
 
 Log pdf of observations in `x` under these Normal distribution(s).
 
@@ -150,21 +224,35 @@ Log pdf of observations in `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.mean` {#Normal.mean}
+#### `tf.contrib.distributions.Normal.mean(name='mean')` {#Normal.mean}
+
+Mean of this distribution.
 
 
+- - -
+
+#### `tf.contrib.distributions.Normal.mode(name='mode')` {#Normal.mode}
+
+Mode of this distribution.
 
 
 - - -
 
 #### `tf.contrib.distributions.Normal.mu` {#Normal.mu}
 
+Distribution parameter for the mean.
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.name` {#Normal.name}
+
 
 
 
 - - -
 
-#### `tf.contrib.distributions.Normal.pdf(x, name=None)` {#Normal.pdf}
+#### `tf.contrib.distributions.Normal.pdf(x, name='pdf')` {#Normal.pdf}
 
 The PDF of observations in `x` under these Normal distribution(s).
 
@@ -182,7 +270,7 @@ The PDF of observations in `x` under these Normal distribution(s).
 
 - - -
 
-#### `tf.contrib.distributions.Normal.sample(n, seed=None, name=None)` {#Normal.sample}
+#### `tf.contrib.distributions.Normal.sample(n, seed=None, name='sample')` {#Normal.sample}
 
 Sample `n` observations from the Normal Distributions.
 
@@ -204,6 +292,34 @@ Sample `n` observations from the Normal Distributions.
 
 #### `tf.contrib.distributions.Normal.sigma` {#Normal.sigma}
 
+Distribution parameter for standard deviation.
 
+
+- - -
+
+#### `tf.contrib.distributions.Normal.std(name='std')` {#Normal.std}
+
+Standard deviation of this distribution.
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.strict` {#Normal.strict}
+
+Boolean describing behavior on invalid input.
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.strict_statistics` {#Normal.strict_statistics}
+
+Boolean describing behavior when a stat is undefined for batch member.
+
+
+- - -
+
+#### `tf.contrib.distributions.Normal.variance(name='variance')` {#Normal.variance}
+
+Variance of this distribution.
 
 

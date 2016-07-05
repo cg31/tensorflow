@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -164,12 +164,14 @@ def train():
                               feed_dict=feed_dict(True),
                               options=run_options,
                               run_metadata=run_metadata)
-        train_writer.add_run_metadata(run_metadata, 'step%d' % i)
+        train_writer.add_run_metadata(run_metadata, 'step%03d' % i)
         train_writer.add_summary(summary, i)
         print('Adding run metadata for', i)
       else:  # Record a summary
         summary, _ = sess.run([merged, train_step], feed_dict=feed_dict(True))
         train_writer.add_summary(summary, i)
+    train_writer.close()
+    test_writer.close()
 
 
 def main(_):

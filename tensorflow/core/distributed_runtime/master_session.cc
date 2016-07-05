@@ -1,4 +1,4 @@
-/* Copyright 2016 Google Inc. All Rights Reserved.
+/* Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -569,11 +569,15 @@ Status MasterSession::ReffedClientGraph::RunPartitions(
   bool success =
       cm->RegisterCallback(token, [&calls]() { calls.StartCancel(); });
   if (!success) {
-    return errors::Cancelled("Step was cancelled");
+    calls.StartCancel();
   }
   calls.Wait();
-  cm->DeregisterCallback(token);
   call_opts->ClearCancelCallback();
+  if (success) {
+    cm->DeregisterCallback(token);
+  } else {
+    return errors::Cancelled("Step was cancelled");
+  }
 
   // Collects fetches.
   Status status = calls.status();
@@ -742,6 +746,12 @@ void MasterSession::UpdateLastAccessTime() {
 }
 
 Status MasterSession::Create(GraphDef* graph_def) {
+  if (session_opts_.config.graph_options().place_pruned_graph()) {
+    // TODO(b/29900832): Fix this or remove the option.
+    return errors::Unimplemented(
+        "MasterSession does not support the place_pruned_graph option.");
+  }
+
   // Keeps a copy of graph_def->library() and flib_def_ serves the
   // OpRegistryInterface used by the SimpleGraphExecutionState to construct the
   // pre-partitioned graphs during DoRunWithLocalExecution().

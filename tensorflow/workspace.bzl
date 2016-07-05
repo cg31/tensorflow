@@ -6,8 +6,8 @@
 def tf_workspace(path_prefix = "", tf_repo_name = ""):
   native.new_http_archive(
     name = "eigen_archive",
-    url = "https://bitbucket.org/eigen/eigen/get/f3a13643ac1f.tar.gz",
-    sha256 = "a9266e60366cddb371a23d86b11a297eee86372a89ef4b38a3509012f9cc37ec",
+    url = "https://bitbucket.org/eigen/eigen/get/334b1d428283.tar.gz",
+    sha256 = "6d5efd02c7c11fbb9d02df4f0b64f22ecbd348e7549f8a83c13fb4d8d9e19d4b",
     build_file = path_prefix + "eigen.BUILD",
   )
 
@@ -108,11 +108,12 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
     actual = "@protobuf//:protoc_lib",
   )
 
-  native.git_repository(
+  native.new_git_repository(
     name = "grpc",
-    commit = "2bc7d80",
+    commit = "39650266",
     init_submodules = True,
     remote = "https://github.com/grpc/grpc.git",
+    build_file = path_prefix + "grpc.BUILD",
   )
 
   # protobuf expects //external:grpc_cpp_plugin to point to grpc's
@@ -142,8 +143,25 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
   native.new_git_repository(
     name = "boringssl_git",
     commit = "e72df93461c6d9d2b5698f10e16d3ab82f5adde3",
-    remote = "https://boringssl.googlesource.com/boringssl",
+    remote = "https://github.com/google/boringssl.git",
     build_file = path_prefix + "boringssl.BUILD",
+  )
+
+  native.bind(
+    name = "boringssl_err_data_c",
+    actual = tf_repo_name + "//third_party/boringssl:err_data_c",
+  )
+
+  native.new_git_repository(
+    name = "nanopb_git",
+    commit = "1251fa1",
+    remote = "https://github.com/nanopb/nanopb.git",
+    build_file = path_prefix + "nanopb.BUILD",
+  )
+
+  native.bind(
+    name = "nanopb",
+    actual = "@nanopb_git//:nanopb",
   )
 
   native.new_http_archive(
@@ -173,4 +191,3 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
     sha256 = "36658cb768a54c1d4dec43c3116c27ed893e88b02ecfcb44f2166f9c0b7f2a0d",
     build_file = path_prefix + "zlib.BUILD",
   )
-

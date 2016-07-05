@@ -1,4 +1,3 @@
-# pylint: disable=g-bad-file-header
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +40,24 @@ class DNNClassifierTest(tf.test.TestCase):
                                                 feature_columns=cont_features,
                                                 hidden_units=[3, 3])
 
-    classifier.train(_iris_input_fn, steps=1000)
+    classifier.fit(input_fn=_iris_input_fn, steps=1000)
     classifier.evaluate(input_fn=_iris_input_fn, steps=100)
+    self.assertTrue('centered_bias_weight' in classifier.get_variable_names())
     # TODO(ispir): Enable accuracy check after resolving the randomness issue.
     # self.assertGreater(scores['accuracy/mean'], 0.6)
+
+  def testDisableCenteredBias(self):
+    """Tests that we can disable centered bias."""
+    cont_features = [
+        tf.contrib.layers.real_valued_column('feature', dimension=4)]
+
+    classifier = tf.contrib.learn.DNNClassifier(n_classes=3,
+                                                feature_columns=cont_features,
+                                                hidden_units=[3, 3],
+                                                enable_centered_bias=False)
+
+    classifier.fit(input_fn=_iris_input_fn, steps=1000)
+    self.assertFalse('centered_bias_weight' in classifier.get_variable_names())
 
 
 class DNNRegressorTest(tf.test.TestCase):
@@ -57,7 +70,7 @@ class DNNRegressorTest(tf.test.TestCase):
     regressor = tf.contrib.learn.DNNRegressor(feature_columns=cont_features,
                                               hidden_units=[3, 3])
 
-    regressor.train(_iris_input_fn, steps=1000)
+    regressor.fit(input_fn=_iris_input_fn, steps=1000)
     regressor.evaluate(input_fn=_iris_input_fn, steps=100)
 
 
@@ -72,7 +85,7 @@ class InferedColumnTest(tf.test.TestCase):
 
   def testTrain(self):
     est = tf.contrib.learn.DNNRegressor(hidden_units=[3, 3])
-    est.train(input_fn=boston_input_fn, steps=1)
+    est.fit(input_fn=boston_input_fn, steps=1)
     _ = est.evaluate(input_fn=boston_input_fn, steps=1)
 
 

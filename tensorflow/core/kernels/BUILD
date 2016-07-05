@@ -15,8 +15,6 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
-exports_files(["LICENSE"])
-
 load(
     "//tensorflow:tensorflow.bzl",
     "tf_cc_test",
@@ -46,9 +44,36 @@ cc_library(
 )
 
 tf_kernel_library(
+    name = "strided_slice_op",
+    srcs = [
+        "strided_slice_op.cc",
+    ],
+    hdrs = [
+        "slice_op.h",
+        "strided_slice_op.h",
+    ],
+    gpu_srcs = [
+        "slice_op.h",
+        "strided_slice_op.h",
+        "strided_slice_op_gpu.cu.cc",
+        "slice_op_gpu.cu.cc",
+    ],
+    deps = [
+        ":bounds_check",
+        ":ops_util",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//third_party/eigen3",
+    ],
+)
+
+tf_kernel_library(
     name = "concat_lib",
     srcs = ["concat_lib_cpu.cc"],
-    hdrs = ["concat_lib.h"],
+    hdrs = [
+        "concat_lib.h",
+        "concat_lib_cpu.h",
+    ],
     gpu_srcs = [
         "concat_lib_gpu.cu.cc",
         "concat_lib.h",
@@ -62,11 +87,37 @@ tf_kernel_library(
 )
 
 cc_library(
+    name = "concat_lib_hdrs",
+    hdrs = [
+        "concat_lib.h",
+        "concat_lib_cpu.h",
+    ],
+    deps = [
+        ":eigen_helpers",
+        ":ops_util_hdrs",
+        "//third_party/eigen3",
+    ],
+)
+
+cc_library(
     name = "conv_2d",
     hdrs = ["conv_2d.h"],
     deps = [
         ":eigen_helpers",
         "//tensorflow/core:framework",
+        "//third_party/eigen3",
+    ],
+)
+
+tf_kernel_library(
+    name = "extract_image_patches_op",
+    prefix = "extract_image_patches_op",
+    deps = [
+        ":bounds_check",
+        ":eigen_helpers",
+        ":ops_util",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
         "//third_party/eigen3",
     ],
 )
@@ -83,6 +134,7 @@ cc_library(
 
 cc_library(
     name = "fill_functor",
+    srcs = ["fill_functor.cc"],
     hdrs = ["fill_functor.h"],
     deps = [
         "//tensorflow/core:framework",
@@ -170,6 +222,19 @@ cc_library(
     hdrs = ["queue_op.h"],
     deps = [
         ":queue_base",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+    ],
+)
+
+cc_library(
+    name = "priority_queue",
+    srcs = ["priority_queue.cc"],
+    hdrs = ["priority_queue.h"],
+    deps = [
+        ":queue_base",
+        ":queue_op",
+        ":typed_queue",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
     ],
@@ -313,6 +378,7 @@ tf_kernel_libraries(
         "one_hot_op",
         "pack_op",
         "pad_op",
+        "quantize_and_dequantize_op",
         "random_shuffle_op",
         "reshape_op",
         "reverse_op",
@@ -332,10 +398,12 @@ tf_kernel_libraries(
         ":concat_lib",
         ":cuda_device_array",
         ":depth_space_ops",
+        ":extract_image_patches_op",
         ":fill_functor",
         ":ops_util",
         ":spacetobatch_op",
         ":split_lib",
+        ":strided_slice_op",
         ":transpose_functor",
         "//tensorflow/core:array_grad",
         "//tensorflow/core:array_ops_op_lib",
@@ -452,6 +520,23 @@ tf_cc_test(
 )
 
 tf_cc_test(
+    name = "quantize_and_dequantize_op_test",
+    size = "small",
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":quantize_and_dequantize_op",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
     name = "reverse_op_test",
     size = "small",
     deps = [
@@ -480,6 +565,24 @@ tf_cc_test(
         ":ops_testutil",
         ":ops_util",
         ":slice_op",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:protos_all_cc",
+        "//tensorflow/core:test",
+        "//tensorflow/core:test_main",
+        "//tensorflow/core:testlib",
+    ],
+)
+
+tf_cc_test(
+    name = "strided_slice_op_test",
+    size = "small",
+    deps = [
+        ":ops_testutil",
+        ":ops_util",
+        ":slice_op",
+        ":strided_slice_op",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
@@ -601,7 +704,9 @@ tf_kernel_libraries(
     prefixes = [
         "dynamic_partition_op",
         "dynamic_stitch_op",
+        "barrier_ops",
         "fifo_queue_op",
+        "priority_queue_op",
         "lookup_table_init_op",
         "lookup_table_op",
         "padding_fifo_queue_op",
@@ -618,6 +723,7 @@ tf_kernel_libraries(
         ":initializable_lookup_table",
         ":lookup_util",
         ":padding_fifo_queue",
+        ":priority_queue",
         ":queue_base",
         ":queue_op",
         ":split_lib",
@@ -706,6 +812,7 @@ tf_kernel_libraries(
     prefixes = [
         "adjust_contrast_op",
         "colorspace_op",
+        "crop_and_resize_op",
         "decode_jpeg_op",
         "decode_png_op",
         "draw_bounding_box_op",
@@ -778,6 +885,7 @@ tf_cc_tests(
     tests = [
         "adjust_contrast_op_test",
         "colorspace_op_test",
+        "crop_and_resize_op_test",
         "resize_bicubic_op_test",
         "resize_bilinear_op_test",
         "resize_nearest_neighbor_op_test",
@@ -844,6 +952,7 @@ tf_cc_tests(
         ":io",
         ":ops_testutil",
         ":ops_util",
+        "//tensorflow/cc:cc_ops",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:core_cpu_internal",
         "//tensorflow/core:framework",
@@ -1148,6 +1257,9 @@ tf_kernel_library(
         "conv_grad_ops.cc",
         "conv_grad_ops_3d.cc",
     ],
+    hdrs = [
+        "conv_grad_ops.h",
+    ],
     prefix = "conv_ops",
     deps = [
         ":bounds_check",
@@ -1209,6 +1321,7 @@ tf_kernel_libraries(
         ":conv_ops",
         ":depthwise_conv_grad_op",
         ":depthwise_conv_op",
+        ":dilation_ops",
         ":ops_util",
         ":pooling_ops",
         "//tensorflow/core:framework",
@@ -1330,6 +1443,19 @@ cc_library(
 )
 
 tf_kernel_library(
+    name = "dilation_ops",
+    prefix = "dilation_ops",
+    deps = [
+        ":ops_util",
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:nn_ops_op_lib",
+        "//third_party/eigen3",
+    ],
+)
+
+tf_kernel_library(
     name = "batchtospace_op",
     prefix = "batchtospace_op",
     deps = [
@@ -1437,6 +1563,7 @@ tf_kernel_libraries(
         "sparse_reduce_sum_op",
         "sparse_dense_binary_op_shared",
         "sparse_reorder_op",
+        "sparse_reshape_op",
         "sparse_softmax",
         "sparse_split_op",
         "sparse_tensor_dense_add_op",
@@ -1518,6 +1645,8 @@ tf_kernel_libraries(
     prefixes = [
         "string_to_hash_bucket_op",
         "reduce_join_op",
+        "string_join_op",
+        "as_string_op",
     ],
     deps = [
         "//tensorflow/core:framework",
@@ -1552,12 +1681,23 @@ tf_cc_test(
     ],
 )
 
+tf_kernel_library(
+    name = "multinomial_op",
+    prefix = "multinomial_op",
+    deps = [
+        ":random_ops",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
+    ],
+)
+
 tf_cuda_cc_test(
     name = "multinomial_op_test",
     size = "small",
     deps = [
+        ":multinomial_op",
         ":ops_util",
-        ":random_ops",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
         "//tensorflow/core:test",
@@ -1606,15 +1746,18 @@ filegroup(
         "cast_op.h",
         "concat_lib.h",
         "concat_lib_cpu.cc",
+        "concat_lib_cpu.h",
         "concat_op.cc",
         "constant_op.cc",
         "constant_op.h",
         "cwise_ops.h",
         "cwise_ops_common.cc",
         "cwise_ops_common.h",
+        "cwise_ops_gradients.h",
         "dense_update_ops.cc",
         "dense_update_ops.h",
         "example_parsing_ops.cc",
+        "fill_functor.cc",
         "fill_functor.h",
         "gather_op.cc",
         "gather_op.h",
@@ -1645,6 +1788,8 @@ filegroup(
         "split_lib.h",
         "split_lib_cpu.cc",
         "split_op.cc",
+        "strided_slice_op.cc",
+        "strided_slice_op.h",
         "unpack_op.cc",
         "variable_ops.cc",
         "variable_ops.h",
@@ -1678,6 +1823,7 @@ filegroup(
         "image_resizer_state.h",
         "maxpooling_op.h",
         "pad_op.h",
+        "random_op.h",
         "reduction_ops.h",
         "reduction_ops_common.h",
         "relu_op.h",
@@ -1705,12 +1851,16 @@ filegroup(
         "check_numerics_op.cc",
         "control_flow_ops.cc",
         "conv_2d.h",
+        "conv_grad_ops.cc",
+        "conv_grad_ops.h",
         "conv_ops.cc",
+        "cwise_op_abs.cc",
         "cwise_op_add.cc",
         "cwise_op_div.cc",
         "cwise_op_equal_to.cc",
         "cwise_op_exp.cc",
         "cwise_op_greater.cc",
+        "cwise_op_inverse.cc",
         "cwise_op_isfinite.cc",
         "cwise_op_less.cc",
         "cwise_op_log.cc",
@@ -1723,6 +1873,7 @@ filegroup(
         "cwise_op_sigmoid.cc",
         "cwise_op_sqrt.cc",
         "cwise_op_square.cc",
+        "cwise_op_squared_difference.cc",
         "cwise_op_sub.cc",
         "cwise_op_tanh.cc",
         "dynamic_partition_op.cc",
@@ -1739,6 +1890,7 @@ filegroup(
         "lrn_op.cc",
         "maxpooling_op.cc",
         "pad_op.cc",
+        "random_op.cc",
         "reduction_ops_common.cc",
         "reduction_ops_max.cc",
         "reduction_ops_mean.cc",
@@ -1746,6 +1898,7 @@ filegroup(
         "reduction_ops_prod.cc",
         "reduction_ops_sum.cc",
         "relu_op.cc",
+        "resize_bilinear_op.cc",
         "resize_nearest_neighbor_op.cc",
         "restore_op.cc",
         "reverse_op.cc",
@@ -1756,6 +1909,7 @@ filegroup(
         "softsign_op.cc",
         "sparse_to_dense_op.cc",
         "stack_ops.cc",
+        "summary_op.cc",
         "tile_ops.cc",
         "topk_op.cc",
         "training_ops.cc",
@@ -1765,6 +1919,53 @@ filegroup(
         "xent_op.cc",
         ":android_extended_ops_headers",
     ],
+)
+
+# A file group which contains nearly all available operators which
+# may work on Android. This is intended to be used with selective
+# registration.
+filegroup(
+    name = "android_all_ops",
+    srcs = glob(
+        [
+            "*.cc",
+            "*.h",
+        ],
+        exclude = [
+            "*test.cc",
+            "*testutil*",
+            "*testlib*",
+            "*main.cc",
+            "*_gpu*",
+            "*_3d*",
+            "*.cu.*",
+            # Ops already in android_srcs
+            "ops_util.cc",
+            "pooling_ops_common.cc",
+            # Ops which we are currently excluding because they are likely
+            # not used on Android. Those ops also do not compile if included,
+            # unless we add the additional deps they need.
+            "strided_slice_op.*",
+            "tf_record_reader_op.*",
+            "string_to_hash_bucket_op.*",
+            "text_line_reader_op.*",
+            "summary_image_op.*",
+            "encode_png_op.*",
+            "decode_png_op.*",
+            "encode_jpeg_op.*",
+            "decode_jpeg_op.*",
+            "identity_reader_op.*",
+            "reader_base.*",
+            "fixed_length_record_reader_op.*",
+            "whole_file_read_ops.*",
+            "sample_distorted_bounding_box_op.*",
+            "ctc_loss_op.*",
+            # Ops excluded because they do not build correctly for Android.
+            # See b/29213790
+            "sparse_matmul_op.*",
+        ],
+    ),
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
