@@ -1060,6 +1060,7 @@ tf_kernel_libraries(
         "matmul_op",
         "reduction_ops",
         "segment_reduction_ops",
+        "scan_ops",
         "sequence_ops",
         "sparse_matmul_op",
     ],
@@ -1332,7 +1333,7 @@ tf_kernel_libraries(
     ],
 )
 
-tf_cc_test(
+tf_cuda_cc_test(
     name = "lrn_op_test",
     deps = [
         ":nn",
