@@ -124,7 +124,6 @@ cc_library(
         "lib/gtl/priority_queue_util.h",
         "lib/gtl/stl_util.h",  # TODO(josh11b): make internal
         "lib/hash/crc32c.h",  # TODO(josh11b): make internal
-        "lib/hash/hash.h",  # TODO(josh11b): make internal
         "lib/histogram/histogram.h",
         "lib/io/inputbuffer.h",  # TODO(josh11b): make internal
         "lib/io/path.h",
@@ -581,6 +580,7 @@ filegroup(
             "graph/dot.*",
             "lib/jpeg/**/*",
             "lib/png/**/*",
+            "lib/gif/**/*",
             "util/checkpoint_reader.*",
             "util/events_writer.*",
             "util/reporter.*",
@@ -591,6 +591,7 @@ filegroup(
             "platform/google/**/*",
             "platform/jpeg.*",
             "platform/png.*",
+            "platform/gif.*",
             "platform/stream_executor.*",
             "user_ops/**/*.cu.cc",
             "common_runtime/gpu/**/*",
@@ -826,6 +827,7 @@ cc_library(
         "lib/gtl/iterator_range.h",
         "lib/gtl/manual_constructor.h",
         "lib/gtl/top_n.h",
+        "lib/hash/hash.h",
         "lib/io/iterator.h",
         "lib/io/match.h",
         "lib/io/zlib_compression_options.h",
@@ -833,6 +835,7 @@ cc_library(
         "lib/io/zlib_outputbuffer.h",
         "lib/jpeg/jpeg_handle.h",
         "lib/png/png_io.h",
+        "lib/gif/gif_io.h",
         "lib/random/random.h",
         "lib/random/random_distributions.h",
         "lib/random/weighted_picker.h",
@@ -1943,6 +1946,10 @@ filegroup(
         "lib/jpeg/testdata/corrupt34_3.jpg",
         # -- hand-edited variant: stops after a restart marker
         "lib/jpeg/testdata/corrupt34_4.jpg",
+        # GIF data
+        "lib/gif/testdata/scan.gif",
+        # GIF data with optimization
+        "lib/gif/testdata/optimized.gif",
     ],
 )
 

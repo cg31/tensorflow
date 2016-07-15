@@ -368,6 +368,7 @@ tf_kernel_libraries(
         "diag_op",
         "batch_matrix_band_part_op",
         "batch_matrix_diag_op",
+        "batch_matrix_set_diag_op",
         "edit_distance_op",
         "gather_nd_op",
         "gather_op",
@@ -814,6 +815,7 @@ tf_kernel_libraries(
         "crop_and_resize_op",
         "decode_jpeg_op",
         "decode_png_op",
+        "decode_gif_op",
         "draw_bounding_box_op",
         "encode_jpeg_op",
         "attention_ops",
@@ -1657,6 +1659,7 @@ tf_kernel_libraries(
     deps = [
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
         "//tensorflow/core:string_ops_op_lib",
     ],
 )
@@ -1986,6 +1989,7 @@ filegroup(
             "decode_png_op.*",
             "encode_jpeg_op.*",
             "decode_jpeg_op.*",
+            "decode_gif_op.*",
             "identity_reader_op.*",
             "reader_base.*",
             "fixed_length_record_reader_op.*",
