@@ -769,6 +769,7 @@ REGISTER_OP("L2Loss")
     .Input("t: T")
     .Output("output: T")
     .Attr("T: numbertype")
+    .SetShapeFn(shape_inference::ScalarShape)
     .Doc(R"doc(
 L2 Loss.
 
@@ -1184,7 +1185,7 @@ REGISTER_OP("Softmax")
     .Output("softmax: T")
     .Attr("T: {half, float, double}")
     .SetShapeFn([](InferenceContext* c) {
-      return shape_inference::UnchangedShapeWithRankAtLeast(c, 2);
+      return shape_inference::UnchangedShapeWithRank(c, 2);
     })
     .Doc(R"doc(
 Computes softmax activations.
@@ -1204,7 +1205,7 @@ REGISTER_OP("LogSoftmax")
     .Output("logsoftmax: T")
     .Attr("T: {half, float, double}")
     .SetShapeFn([](InferenceContext* c) {
-      return shape_inference::UnchangedShapeWithRankAtLeast(c, 2);
+      return shape_inference::UnchangedShapeWithRank(c, 2);
     })
     .Doc(R"doc(
 Computes log softmax activations.

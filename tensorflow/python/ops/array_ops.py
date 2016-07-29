@@ -46,6 +46,7 @@ TensorFlow provides several operations to slice or extract parts of a tensor,
 or join multiple tensors together.
 
 @@slice
+@@strided_slice
 @@split
 @@tile
 @@pad
@@ -1595,8 +1596,9 @@ def _StridedSliceShape(op):
 
   sparse_dims = begin_shape.merge_with(end_shape).merge_with(strides_shape)[
       0].value
-  if sparse_dims is None:
-    return [input_shape.unknown_shape()]
+  if (sparse_dims is None or begin_value is None or end_value is None or
+      strides_value is None):
+    return [tensor_shape.unknown_shape()]
 
   begin_mask = op.get_attr("begin_mask")
   end_mask = op.get_attr("end_mask")

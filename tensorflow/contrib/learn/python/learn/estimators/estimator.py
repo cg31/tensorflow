@@ -173,8 +173,10 @@ class BaseEstimator(sklearn.BaseEstimator):
     # Create a run configuration
     if config is None:
       self._config = BaseEstimator._Config()
+      logging.warning('Using default config.')
     else:
       self._config = config
+    logging.info('Using config: %s', str(vars(self._config)))
 
     # Set device function depending if there are replicas or not.
     if self._config.num_ps_replicas > 0:
@@ -569,7 +571,7 @@ class BaseEstimator(sklearn.BaseEstimator):
           log_every_steps=log_every_steps,
           supervisor_is_chief=(self._config.task == 0),
           supervisor_master=self._config.master,
-          supervisor_save_model_secs=self._config.save_checkpoints_secs,
+          supervisor_save_model_steps=self._config.save_checkpoints_steps,
           keep_checkpoint_max=self._config.keep_checkpoint_max,
           feed_fn=feed_fn,
           steps=steps,
