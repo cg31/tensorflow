@@ -133,7 +133,7 @@ def read_keyed_batch_examples(
   Raises:
     ValueError: for invalid inputs.
   """
-  # Retrive files to read.
+  # Retrieve files to read.
   if isinstance(file_pattern, list):
     file_names = file_pattern
     if not file_names:
@@ -166,7 +166,7 @@ def read_keyed_batch_examples(
   if (num_epochs is not None) and (num_epochs <= 0):
     raise ValueError('Invalid num_epochs %s.' % num_epochs)
 
-  with ops.op_scope([file_pattern], name, 'read_batch_examples') as scope:
+  with ops.name_scope(name, 'read_batch_examples', [file_pattern]) as scope:
     # Setup filename queue with shuffling.
     with ops.name_scope('file_name_queue') as file_name_queue_scope:
       file_name_queue = input_ops.string_input_producer(
@@ -283,7 +283,7 @@ def read_keyed_batch_features(file_pattern,
     # TODO(sibyl-Aix6ihai): Remove on Sept 3 2016.
     logging.warning('parser_num_threads is deprecated, it will be removed on'
                     'Sept 3 2016')
-  with ops.op_scope([file_pattern], name, 'read_batch_features') as scope:
+  with ops.name_scope(name, 'read_batch_features', [file_pattern]) as scope:
     keys, examples = read_keyed_batch_examples(
         file_pattern, batch_size, reader, randomize_input=randomize_input,
         num_epochs=num_epochs, queue_capacity=queue_capacity,
@@ -303,7 +303,8 @@ def read_keyed_batch_features(file_pattern,
     # tensors into a queue. This could be taken care in somewhere else so others
     # can reuse it. Also, QueueBase maybe extended to handle sparse tensors
     # directly.
-    for key, tensor in feature_map.iteritems():
+    for key in sorted(feature_map.keys()):
+      tensor = feature_map[key]
       if isinstance(tensor, ops.SparseTensor):
         tensors_mapping.append((key, True))
         tensors_to_enqueue.extend([tensor.indices, tensor.values, tensor.shape])
@@ -354,8 +355,8 @@ def read_keyed_batch_features(file_pattern,
 
 def read_batch_features(file_pattern, batch_size, features, reader,
                         randomize_input=True, num_epochs=None,
-                        queue_capacity=10000, reader_num_threads=1,
-                        parser_num_threads=1, name=None):
+                        queue_capacity=10000, feature_queue_capacity=100,
+                        reader_num_threads=1, parser_num_threads=1, name=None):
   """Adds operations to read, queue, batch and parse `Example` protos.
 
   Given file pattern (or list of files), will setup a queue for file names,
@@ -382,6 +383,8 @@ def read_batch_features(file_pattern, batch_size, features, reader,
       creates a variable that must be initialized, so call
       tf.initialize_local_variables() as shown in the tests.
     queue_capacity: Capacity for input queue.
+    feature_queue_capacity: Capacity of the parsed features queue. Set this
+      value to a small number, for example 5 if the parsed features are large.
     reader_num_threads: The number of threads to read examples.
     parser_num_threads: The number of threads to parse examples.
       records to read at once
@@ -397,7 +400,9 @@ def read_batch_features(file_pattern, batch_size, features, reader,
   _, features = read_keyed_batch_features(
       file_pattern, batch_size, features, reader,
       randomize_input=randomize_input, num_epochs=num_epochs,
-      queue_capacity=queue_capacity, reader_num_threads=reader_num_threads,
+      queue_capacity=queue_capacity,
+      feature_queue_capacity=feature_queue_capacity,
+      reader_num_threads=reader_num_threads,
       parser_num_threads=parser_num_threads, name=name)
   return features
 

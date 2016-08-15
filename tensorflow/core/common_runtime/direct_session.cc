@@ -769,9 +769,9 @@ Status DirectSession::GetOrCreateExecutors(
 
     ek->items.resize(ek->items.size() + 1);
     auto* item = &(ek->items.back());
-    item->flib.reset(
-        NewFunctionLibraryRuntime(device_mgr_.get(), device, graph_def_version,
-                                  ek->flib_def.get(), optimizer_opts));
+    item->flib.reset(NewFunctionLibraryRuntime(
+        device_mgr_.get(), options_.env, device, graph_def_version,
+        ek->flib_def.get(), optimizer_opts));
 
     LocalExecutorParams params;
     params.device = device;
@@ -802,7 +802,7 @@ Status DirectSession::GetOrCreateExecutors(
     params.node_outputs_cb = node_outputs_callback_;
 
     partition_graph = iter->second.release();
-    optimizer.Optimize(lib, device, &partition_graph);
+    optimizer.Optimize(lib, options_.env, device, &partition_graph);
 
     // EXPERIMENTAL: tfdb inserts debug nodes (i.e., probes) to the graph
     if (!run_state_args->debug_tensor_watches.empty()) {
@@ -1045,8 +1045,13 @@ class DirectSessionFactory : public SessionFactory {
       EnableCPUAllocatorFullStats(true);
     }
     std::vector<Device*> devices;
-    DeviceFactory::AddDevices(options, "/job:localhost/replica:0/task:0",
-                              &devices);
+    Status s = DeviceFactory::AddDevices(
+        options, "/job:localhost/replica:0/task:0", &devices);
+    if (!s.ok()) {
+      LOG(ERROR) << s;
+      return nullptr;
+    }
+
     return new DirectSession(options, new DeviceMgr(devices));
   }
 };

@@ -262,8 +262,8 @@ class Variable(object):
     if trainable and ops.GraphKeys.TRAINABLE_VARIABLES not in collections:
       collections = list(collections) + [ops.GraphKeys.TRAINABLE_VARIABLES]
     with ops.control_dependencies(None):
-      with ops.op_scope(
-          [] if init_from_fn else [initial_value], name, "Variable") as name:
+      with ops.name_scope(name, "Variable",
+                          [] if init_from_fn else [initial_value]) as name:
 
         # Get the initial value from a callable function. The real shape of the
         # variable will be set later, since under the init_from_fn case, the
@@ -858,6 +858,17 @@ def all_variables():
   return ops.get_collection(ops.GraphKeys.VARIABLES)
 
 
+def _all_saveable_objects():
+  """Returns all variables and `SaveableObject`s that must be checkpointed.
+
+  Returns:
+    A list of `Variable` and `SaveableObject` to be checkpointed
+  """
+  # TODO(andreasst): make this function public once things are settled.
+  return ops.get_collection(ops.GraphKeys.VARIABLES) + ops.get_collection(
+      ops.GraphKeys.SAVEABLE_OBJECTS)
+
+
 def trainable_variables():
   """Returns all variables created with `trainable=True`.
 
@@ -999,7 +1010,7 @@ def assert_variables_initialized(var_list=None):
     ranks = []
     for var in var_list:
       with ops.colocate_with(var.op):
-        ranks.append(array_ops.rank(var))
+        ranks.append(array_ops.rank_internal(var, optimize=False))
     if len(ranks) == 1:
       return ranks[0]
     else:

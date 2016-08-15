@@ -256,6 +256,37 @@ do_pep8() {
 }
 
 
+do_buildifier(){
+  BUILD_FILES=$(find tensorflow -name 'BUILD*')
+  NUM_BUILD_FILES=$(echo ${BUILD_FILES} | wc -w)
+
+  echo "Running do_buildifier on ${NUM_BUILD_FILES} files"
+  echo ""
+
+  BUILDIFIER_START_TIME=$(date +'%s')
+  BUILDIFIER_OUTPUT_FILE="$(mktemp)_buildifier_output.log"
+
+  rm -rf ${BUILDIFIER_OUTPUT_FILE}
+
+  buildifier -showlog -v -mode=check \
+    ${BUILD_FILES} 2>&1 | tee ${BUILDIFIER_OUTPUT_FILE}
+  BUILDIFIER_END_TIME=$(date +'%s')
+
+  echo ""
+  echo "buildifier took $((${BUILDIFIER_END_TIME} - ${BUILDIFIER_START_TIME})) s"
+  echo ""
+
+  if [[ -s ${BUILDIFIER_OUTPUT_FILE} ]]; then
+    echo "FAIL: buildifier found errors and/or warnings in above BUILD files."
+    echo "buildifier suggested the following changes:"
+    buildifier -showlog -v -mode=diff ${BUILD_FILES}
+    echo "Please fix manually or run buildifier <file> to auto-fix."
+    return 1
+  else
+    echo "PASS: No buildifier errors or warnings were found"
+    return 0
+  fi
+}
 
 # Run bazel build --nobuild to test the validity of the BUILD files
 do_bazel_nobuild() {
@@ -277,8 +308,8 @@ do_bazel_nobuild() {
 }
 
 # Supply all sanity step commands and descriptions
-SANITY_STEPS=("do_pylint PYTHON2" "do_pylint PYTHON3" "do_bazel_nobuild")
-SANITY_STEPS_DESC=("Python 2 pylint" "Python 3 pylint" "bazel nobuild")
+SANITY_STEPS=("do_pylint PYTHON2" "do_pylint PYTHON3" "do_buildifier" "do_bazel_nobuild")
+SANITY_STEPS_DESC=("Python 2 pylint" "Python 3 pylint" "buildifier check" "bazel nobuild")
 
 INCREMENTAL_FLAG=""
 

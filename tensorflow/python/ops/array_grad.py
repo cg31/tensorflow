@@ -19,10 +19,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from math import ceil
+
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_util
 from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import sparse_ops
 from tensorflow.python.ops import gen_array_ops
 from tensorflow.python.ops import math_ops
 
@@ -59,6 +62,24 @@ def _ConcatGrad(op, grad):
     begin = array_ops.fill(shape_of_shape, 0)
     return mask, begin
 
+  def _ExtractInputShapes(inputs):
+    """Extract the shapes of a set of input tensors."""
+    sizes = []
+    fully_known = True
+    for x in inputs:
+      input_shape = array_ops.shape(x)
+      if not isinstance(input_shape,
+                        ops.Tensor) or input_shape.op.type != "Const":
+        fully_known = False
+        break
+      else:
+        sizes.append(input_shape)
+
+    if fully_known:
+      return sizes
+    else:
+      return array_ops.shape_n(inputs)
+
   # Degenerate concatenation, just return grad.
   if len(op.inputs) == 2:
     return [None, grad]
@@ -67,7 +88,7 @@ def _ConcatGrad(op, grad):
   out_grads = []
   if isinstance(grad, ops.Tensor):
     # Get the inputs' tensor shapes
-    sizes = array_ops.shape_n(op.inputs[1:])
+    sizes = _ExtractInputShapes(op.inputs[1:])
     # pylint: disable=protected-access
     offset = gen_array_ops._concat_offset(concat_dim, sizes)
     # pylint: enable=protected-access
@@ -448,3 +469,78 @@ def _MirrorPadGradGrad(op, grad):
 @ops.RegisterGradient("QuantizeAndDequantize")
 def _QuantizeAndDequantizeGrad(_, grad):
   return grad
+
+
+@ops.RegisterGradient("ExtractImagePatches")
+def _ExtractImagePatchesGrad(op, grad):
+
+  batch_size, rows_in, cols_in, channels = [
+    dim.value for dim in op.inputs[0].get_shape()
+  ]
+  _, rows_out, cols_out, _ = [
+    dim.value for dim in op.outputs[0].get_shape()
+  ]
+  _, ksize_r, ksize_c, _ = op.get_attr('ksizes')
+  _, stride_r, stride_h, _ = op.get_attr('strides')
+  _, rate_r, rate_c, _ = op.get_attr('rates')
+  padding = op.get_attr('padding')
+
+  ksize_r_eff = ksize_r + (ksize_r - 1) * (rate_r - 1)
+  ksize_c_eff = ksize_c + (ksize_c - 1) * (rate_c - 1)
+
+  if padding == 'SAME':
+    rows_out = int(ceil(rows_in / stride_r))
+    cols_out = int(ceil(cols_in / stride_h))
+    pad_rows = ((rows_out - 1) * stride_r + ksize_r_eff - rows_in) // 2
+    pad_cols = ((cols_out - 1) * stride_h + ksize_c_eff - cols_in) // 2
+
+  elif padding == 'VALID':
+    rows_out = int(ceil((rows_in - ksize_r_eff + 1) / stride_r))
+    cols_out = int(ceil((cols_in - ksize_c_eff + 1) / stride_h))
+    pad_rows = (rows_out - 1) * stride_r + ksize_r_eff - rows_in
+    pad_cols = (cols_out - 1) * stride_h + ksize_c_eff - cols_in
+
+  pad_rows, pad_cols = max(0, pad_rows), max(0, pad_cols)
+
+  grad_expanded = array_ops.transpose(
+    array_ops.reshape(grad, (batch_size, rows_out,
+                             cols_out, ksize_r, ksize_c, channels)),
+    (1, 2, 3, 4, 0, 5)
+  )
+  grad_flat = array_ops.reshape(grad_expanded, (-1, batch_size * channels))
+
+  row_steps = range(0, rows_out * stride_r, stride_r)
+  col_steps = range(0, cols_out * stride_h, stride_h)
+
+  idx = []
+  for i in range(rows_out):
+    for j in range(cols_out):
+      r_low, c_low = row_steps[i] - pad_rows, col_steps[j] - pad_cols
+      r_high, c_high = r_low + ksize_r_eff, c_low + ksize_c_eff
+
+      idx.extend([(r * (cols_in) + c,
+                   i * (cols_out * ksize_r * ksize_c) +
+                   j * (ksize_r * ksize_c) +
+                   ri * (ksize_c) + ci)
+                  for (ri, r) in enumerate(range(r_low, r_high, rate_r))
+                  for (ci, c) in enumerate(range(c_low, c_high, rate_c))
+                  if 0 <= r and r < rows_in and 0 <= c and c < cols_in
+      ])
+
+  sp_shape = (rows_in * cols_in,
+              rows_out * cols_out * ksize_r * ksize_c)
+
+  sp_mat = ops.SparseTensor(
+    array_ops.constant(idx, dtype=ops.dtypes.int64),
+    array_ops.ones((len(idx),), dtype=ops.dtypes.float32),
+    sp_shape
+  )
+
+  jac = sparse_ops.sparse_tensor_dense_matmul(sp_mat, grad_flat)
+
+  grad_out = array_ops.reshape(
+    jac, (rows_in, cols_in, batch_size, channels)
+  )
+  grad_out = array_ops.transpose(grad_out, (2, 0, 1, 3))
+
+  return [grad_out]

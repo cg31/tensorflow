@@ -852,6 +852,17 @@ tf_kernel_library(
     ],
 )
 
+tf_kernel_library(
+    name = "function_ops",
+    prefix = "function_ops",
+    deps = [
+        "//tensorflow/core:core_cpu",
+        "//tensorflow/core:core_cpu_internal",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+    ],
+)
+
 tf_kernel_libraries(
     name = "image",
     prefixes = [
@@ -1545,6 +1556,7 @@ tf_kernel_libraries(
         "decode_csv_op",
         "decode_raw_op",
         "example_parsing_ops",
+        "parse_tensor_op",
         "string_to_number_op",
     ],
     deps = [
@@ -1692,6 +1704,7 @@ tf_kernel_libraries(
         "string_to_hash_bucket_op",
         "reduce_join_op",
         "string_join_op",
+        "string_split_op",
         "as_string_op",
     ],
     deps = [
@@ -1832,6 +1845,7 @@ filegroup(
         "example_parsing_ops.cc",
         "fill_functor.cc",
         "fill_functor.h",
+        "function_ops.cc",
         "gather_op.cc",
         "gather_op.h",
         "identity_op.cc",

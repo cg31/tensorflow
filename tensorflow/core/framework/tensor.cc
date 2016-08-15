@@ -218,7 +218,6 @@ PROTO_TRAITS(uint8, int32, int);
 PROTO_TRAITS(uint16, int32, int);
 PROTO_TRAITS(int16, int32, int);
 PROTO_TRAITS(int8, int32, int);
-PROTO_TRAITS(int64, int64, int64);
 PROTO_TRAITS(bool, bool, bool);
 PROTO_TRAITS(string, string, string);
 PROTO_TRAITS(qint8, int32, int);
@@ -226,6 +225,20 @@ PROTO_TRAITS(quint8, int32, int);
 PROTO_TRAITS(qint16, int32, int);
 PROTO_TRAITS(quint16, int32, int);
 #undef PROTO_TRAITS
+
+template <>
+struct ProtoHelper<int64> {
+  static const int64* Begin(const TensorProto& proto) {
+    return reinterpret_cast<const int64*>(proto.int64_val().begin());
+  }
+  static size_t NumElements(const TensorProto& proto) {
+    return proto.int64_val().size();
+  }
+  static void Fill(const int64* data, size_t n, TensorProto* proto) {
+    protobuf::RepeatedField<protobuf_int64> copy(data, data + n);
+    proto->mutable_int64_val()->Swap(&copy);
+  }
+};
 
 template <>
 struct ProtoHelper<complex64> {
@@ -438,8 +451,11 @@ Tensor::~Tensor() { UnrefIfNonNull(buf_); }
 
 void Tensor::CopyFromInternal(const Tensor& other, const TensorShape& shape) {
   CHECK_EQ(shape.num_elements(), other.NumElements());
+  // Data type will be overwritten if this == &other, since dtype is part of
+  // shape.
+  DataType other_dtype = other.dtype();
   shape_ = shape;
-  set_dtype(other.dtype());
+  set_dtype(other_dtype);
   if (buf_ != other.buf_) {
     UnrefIfNonNull(buf_);
     buf_ = other.buf_;

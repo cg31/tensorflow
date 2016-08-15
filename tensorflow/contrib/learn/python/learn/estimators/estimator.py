@@ -31,8 +31,12 @@ import six
 
 from tensorflow.contrib import framework as contrib_framework
 from tensorflow.contrib import layers
+from tensorflow.contrib import metrics as metrics_lib
+from tensorflow.contrib.framework import deprecated_arg_values
 from tensorflow.contrib.learn.python.learn import evaluable
 from tensorflow.contrib.learn.python.learn import graph_actions
+from tensorflow.contrib.learn.python.learn import monitors as monitor_lib
+from tensorflow.contrib.learn.python.learn import session_run_hook
 from tensorflow.contrib.learn.python.learn import trainable
 from tensorflow.contrib.learn.python.learn.estimators import _sklearn as sklearn
 from tensorflow.contrib.learn.python.learn.estimators import run_config
@@ -48,6 +52,13 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.training import device_setter
 from tensorflow.python.training import saver
+
+
+AS_ITERABLE_DATE = '2016-09-15'
+AS_ITERABLE_INSTRUCTIONS = (
+    'The default behavior of predict() is changing. The default value for\n'
+    'as_iterable will change to True, and then the flag will be removed\n'
+    'altogether. The behavior of this flag is described below.')
 
 
 class ModeKeys(object):
@@ -140,6 +151,17 @@ def _get_arguments(func):
     return _get_arguments(func.func)
 
 
+def _get_replica_device_setter(num_ps_replicas):
+  """Creates a replica device setter if required."""
+  ps_ops = ['Variable', 'AutoReloadVariable',
+            'MutableHashTable', 'MutableHashTableOfTensors']
+  if num_ps_replicas > 0:
+    return device_setter.replica_device_setter(
+        ps_tasks=num_ps_replicas, merge_devices=False, ps_ops=ps_ops)
+  else:
+    return None
+
+
 class BaseEstimator(
     sklearn.BaseEstimator, evaluable.Evaluable, trainable.Trainable):
   """Abstract BaseEstimator class to train and evaluate TensorFlow models.
@@ -154,6 +176,8 @@ class BaseEstimator(
   """
   __metaclass__ = abc.ABCMeta
 
+  # Note that for Google users, this is overriden with
+  # learn_runner.EstimatorConfig.
   # TODO(wicke): Remove this once launcher takes over config functionality
   _Config = run_config.RunConfig  # pylint: disable=invalid-name
 
@@ -182,13 +206,7 @@ class BaseEstimator(
     logging.info('Using config: %s', str(vars(self._config)))
 
     # Set device function depending if there are replicas or not.
-    if self._config.num_ps_replicas > 0:
-      ps_ops = ['Variable', 'AutoReloadVariable']
-      self._device_fn = device_setter.replica_device_setter(
-          ps_tasks=self._config.num_ps_replicas,
-          merge_devices=False, ps_ops=ps_ops)
-    else:
-      self._device_fn = None
+    self._device_fn = _get_replica_device_setter(self._config.num_ps_replicas)
 
     # Features and targets TensorSignature objects.
     # TODO(wicke): Rename these to something more descriptive
@@ -287,6 +305,8 @@ class BaseEstimator(
       eval_results.update({'global_step': global_step})
     return eval_results
 
+  @deprecated_arg_values(
+      AS_ITERABLE_DATE, AS_ITERABLE_INSTRUCTIONS, as_iterable=False)
   def predict(
       self, x=None, input_fn=None, batch_size=None, outputs=None,
       as_iterable=False):
@@ -482,11 +502,28 @@ class BaseEstimator(
       if monitors is None:
         monitors = []
 
+      hooks = [m for m in monitors
+               if isinstance(m, session_run_hook.SessionRunHook)]
+
+      deprecated_monitors = [
+          m for m in monitors
+          if not isinstance(m, session_run_hook.SessionRunHook)
+      ]
+
+      supervisor_is_chief = (self._config.task == 0)
+      if not supervisor_is_chief:
+        # Prune list of monitor to the ones runnable on all workers.
+        deprecated_monitors = [m for m in deprecated_monitors
+                               if m.run_on_all_workers]
+
       # Setup monitors.
-      for monitor in monitors:
+      for monitor in deprecated_monitors:
         monitor.set_estimator(self)
 
-      return graph_actions._supervised_train(  # pylint: disable=protected-access
+      if deprecated_monitors:
+        hooks.append(monitor_lib.RunHookAdapterForMonitors(deprecated_monitors))
+
+      return graph_actions._monitored_train(  # pylint: disable=protected-access
           graph=g,
           output_dir=self._model_dir,
           train_op=train_op,
@@ -496,14 +533,15 @@ class BaseEstimator(
           init_feed_dict=init_feed_fn() if init_feed_fn is not None else None,
           init_fn=init_fn,
           log_every_steps=log_every_steps,
-          supervisor_is_chief=(self._config.task == 0),
+          supervisor_is_chief=supervisor_is_chief,
           supervisor_master=self._config.master,
           supervisor_save_model_secs=self._config.save_checkpoints_secs,
+          supervisor_save_summaries_steps=self._config.save_summary_steps,
           keep_checkpoint_max=self._config.keep_checkpoint_max,
           feed_fn=feed_fn,
           steps=steps,
           fail_on_nan_loss=fail_on_nan_loss,
-          monitors=monitors,
+          hooks=hooks,
           max_steps=max_steps)
 
   def _extract_metric_update_ops(self, eval_dict):
@@ -776,7 +814,8 @@ class Estimator(BaseEstimator):
       ValueError: if `metrics` don't match `targets`.
     """
     predictions, loss, _ = self._call_model_fn(features, targets, ModeKeys.EVAL)
-    result = {'loss': loss}
+    result = {'loss': metrics_lib.streaming_mean(loss)}
+
     metrics = metrics or {}
     if isinstance(targets, dict) and len(targets) == 1:
       # Unpack single target into just tensor.
