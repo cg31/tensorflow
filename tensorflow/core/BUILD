@@ -74,6 +74,7 @@ load(
     "//tensorflow/core:platform/default/build_config.bzl",
     "tf_proto_library",
     "tf_proto_library_cc",
+    "tf_additional_lib_hdrs",
     "tf_additional_lib_srcs",
     "tf_additional_proto_srcs",
     "tf_additional_lib_deps",
@@ -865,7 +866,7 @@ cc_library(
             "platform/**/stream_executor.h",
         ],
     ),
-    hdrs = [
+    hdrs = glob(tf_additional_lib_hdrs()) + [
         "lib/core/blocking_counter.h",
         "lib/core/refcount.h",
         "lib/gif/gif_io.h",
@@ -886,6 +887,7 @@ cc_library(
         "lib/random/random.h",
         "lib/random/random_distributions.h",
         "lib/random/weighted_picker.h",
+        "lib/strings/base64.h",
         "lib/strings/ordered_code.h",
         "lib/strings/proto_text_util.h",
         "lib/strings/regexp.h",
@@ -1319,6 +1321,7 @@ tf_cc_tests(
         "lib/random/random_distributions_test.cc",
         "lib/random/random_test.cc",
         "lib/random/simple_philox_test.cc",
+        "lib/strings/base64_test.cc",
         "lib/strings/numbers_test.cc",
         "lib/strings/scanner_test.cc",
         "lib/strings/str_util_test.cc",

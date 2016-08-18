@@ -13,21 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/core/platform/cloud/base64.h"
-#include "tensorflow/core/lib/core/status_test_util.h"
-#include "tensorflow/core/platform/test.h"
-
-namespace tensorflow {
-
-TEST(Base64, EncodeDecode) {
-  const string original = "a simple test message!";
-  string encoded;
-  TF_EXPECT_OK(Base64Encode(original, &encoded));
-  EXPECT_EQ("YSBzaW1wbGUgdGVzdCBtZXNzYWdlIQ", encoded);
-
-  string decoded;
-  TF_EXPECT_OK(Base64Decode(encoded, &decoded));
-  EXPECT_EQ(original, decoded);
-}
-
-}  // namespace tensorflow
+#define CPU_PROVIDED_IXDIM 2
+#include "tensorflow/core/kernels/slice_op_cpu_impl.h"
+#undef CPU_PROVIDED_IXDIM

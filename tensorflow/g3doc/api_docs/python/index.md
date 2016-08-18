@@ -276,6 +276,8 @@
 
 * **[Strings](../../api_docs/python/string_ops.md)**:
   * [`as_string`](../../api_docs/python/string_ops.md#as_string)
+  * [`decode_base64`](../../api_docs/python/string_ops.md#decode_base64)
+  * [`encode_base64`](../../api_docs/python/string_ops.md#encode_base64)
   * [`reduce_join`](../../api_docs/python/string_ops.md#reduce_join)
   * [`string_join`](../../api_docs/python/string_ops.md#string_join)
   * [`string_split`](../../api_docs/python/string_ops.md#string_split)
@@ -590,15 +592,19 @@
 * **[BayesFlow Stochastic Graph (contrib)](../../api_docs/python/contrib.bayesflow.stochastic_graph.md)**:
   * [`DistributionTensor`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#DistributionTensor)
   * [`get_current_value_type`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#get_current_value_type)
-  * [`get_score_function_with_baseline`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#get_score_function_with_baseline)
   * [`MeanValue`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#MeanValue)
   * [`NoValueTypeSetError`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#NoValueTypeSetError)
   * [`SampleAndReshapeValue`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#SampleAndReshapeValue)
   * [`SampleValue`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#SampleValue)
-  * [`score_function`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#score_function)
   * [`StochasticTensor`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#StochasticTensor)
   * [`surrogate_loss`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#surrogate_loss)
   * [`value_type`](../../api_docs/python/contrib.bayesflow.stochastic_graph.md#value_type)
+
+* **[BayesFlow Variational Inference (contrib)](../../api_docs/python/contrib.bayesflow.variational_inference.md)**:
+  * [`elbo`](../../api_docs/python/contrib.bayesflow.variational_inference.md#elbo)
+  * [`elbo_with_log_joint`](../../api_docs/python/contrib.bayesflow.variational_inference.md#elbo_with_log_joint)
+  * [`ELBOForms`](../../api_docs/python/contrib.bayesflow.variational_inference.md#ELBOForms)
+  * [`register_prior`](../../api_docs/python/contrib.bayesflow.variational_inference.md#register_prior)
 
 * **[Statistical distributions (contrib)](../../api_docs/python/contrib.distributions.md)**:
   * [`BaseDistribution`](../../api_docs/python/contrib.distributions.md#BaseDistribution)
@@ -624,6 +630,7 @@
   * [`Normal`](../../api_docs/python/contrib.distributions.md#Normal)
   * [`normal_congugates_known_sigma_predictive`](../../api_docs/python/contrib.distributions.md#normal_congugates_known_sigma_predictive)
   * [`normal_conjugates_known_sigma_posterior`](../../api_docs/python/contrib.distributions.md#normal_conjugates_known_sigma_posterior)
+  * [`Poisson`](../../api_docs/python/contrib.distributions.md#Poisson)
   * [`RegisterKL`](../../api_docs/python/contrib.distributions.md#RegisterKL)
   * [`StudentT`](../../api_docs/python/contrib.distributions.md#StudentT)
   * [`TransformedDistribution`](../../api_docs/python/contrib.distributions.md#TransformedDistribution)
@@ -862,8 +869,15 @@
   * [`streaming_recall`](../../api_docs/python/contrib.metrics.md#streaming_recall)
   * [`streaming_recall_at_k`](../../api_docs/python/contrib.metrics.md#streaming_recall_at_k)
   * [`streaming_root_mean_squared_error`](../../api_docs/python/contrib.metrics.md#streaming_root_mean_squared_error)
+  * [`streaming_sensitivity_at_specificity`](../../api_docs/python/contrib.metrics.md#streaming_sensitivity_at_specificity)
   * [`streaming_sparse_precision_at_k`](../../api_docs/python/contrib.metrics.md#streaming_sparse_precision_at_k)
   * [`streaming_sparse_recall_at_k`](../../api_docs/python/contrib.metrics.md#streaming_sparse_recall_at_k)
+  * [`streaming_specificity_at_sensitivity`](../../api_docs/python/contrib.metrics.md#streaming_specificity_at_sensitivity)
+
+* **[Training (contrib)](../../api_docs/python/contrib.training.md)**:
+  * [`batch_sequences_with_states`](../../api_docs/python/contrib.training.md#batch_sequences_with_states)
+  * [`NextQueuedSequenceBatch`](../../api_docs/python/contrib.training.md#NextQueuedSequenceBatch)
+  * [`SequenceQueueingStateSaver`](../../api_docs/python/contrib.training.md#SequenceQueueingStateSaver)
 
 * **[Utilities (contrib)](../../api_docs/python/contrib.util.md)**:
   * [`constant_value`](../../api_docs/python/contrib.util.md#constant_value)

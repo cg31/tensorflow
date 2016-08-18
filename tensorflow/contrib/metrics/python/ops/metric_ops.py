@@ -123,6 +123,42 @@ def _count_condition(values, ignore_mask=None, metrics_collections=None,
   return value_tensor, update_op
 
 
+def _streaming_true_negatives(predictions, labels, ignore_mask=None,
+                              metrics_collections=None,
+                              updates_collections=None,
+                              name=None):
+  """Computes the total number of true_negatives.
+
+  Args:
+    predictions: The predicted values, a binary `Tensor` of arbitrary
+      dimensions.
+    labels: The ground truth values, a binary `Tensor` whose dimensions must
+      match `predictions`.
+    ignore_mask: An optional, binary tensor whose size matches 'predictions'.
+    metrics_collections: An optional list of collections that the metric
+      value variable should be added to.
+    updates_collections: An optional list of collections that the metric update
+      ops should be added to.
+    name: An optional variable_scope name.
+
+  Returns:
+    value_tensor: A tensor representing the current value of the metric.
+    update_op: An operation that accumulates the error from a batch of data.
+
+  Raises:
+    ValueError: If either `metrics_collections` or `updates_collections` are not
+      a list or tuple.
+  """
+  with variable_scope.variable_scope(
+      [predictions, labels], name, 'true_negatives'):
+
+    predictions.get_shape().assert_is_compatible_with(labels.get_shape())
+    is_true_negative = math_ops.logical_and(math_ops.equal(labels, 0),
+                                            math_ops.equal(predictions, 0))
+    return _count_condition(is_true_negative, ignore_mask, metrics_collections,
+                            updates_collections)
+
+
 def _streaming_true_positives(predictions, labels, ignore_mask=None,
                               metrics_collections=None,
                               updates_collections=None,
@@ -592,18 +628,18 @@ def streaming_recall(predictions, labels, ignore_mask=None,
     return recall, update_op
 
 
-def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
+def _tp_fn_tn_fp(predictions, labels, thresholds, weights):
   """Computes true_positives, false_negatives, true_negatives, false_positives.
 
   The `_tp_fn_tn_fp` function creates four local variables, `true_positives`,
   `true_negatives`, `false_positives` and `false_negatives`.
-  `true_positive[i]` is defined` as the number of values in `predictions` above
-  `thresholds[i]` whose corresponding entry in `labels` is `True`.
-  `false_negatives[i]` is defined` as the number of values in `predictions` at
-  most `thresholds[i]` whose corresponding entry in `labels` is `True`.
-  `true_negatives[i]` is defined` as the number of values in `predictions` at
-  most `thresholds[i]` whose corresponding entry in `labels` is `False`.
-  `false_positives[i]` is defined` as the number of values in `predictions`
+  `true_positive[i]` is defined as the total weight of values in `predictions`
+  above `thresholds[i]` whose corresponding entry in `labels` is `True`.
+  `false_negatives[i]` is defined as the total weight of values in `predictions`
+  at most `thresholds[i]` whose corresponding entry in `labels` is `True`.
+  `true_negatives[i]` is defined as the total weight of values in `predictions`
+  at most `thresholds[i]` whose corresponding entry in `labels` is `False`.
+  `false_positives[i]` is defined as the total weight of values in `predictions`
   above `thresholds[i]` whose corresponding entry in `labels` is `False`.
 
   These four variables are updated through the `update_op`.
@@ -611,16 +647,16 @@ def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
   `update_op`s is the same as if the inputs had been concatenated and a single
   `update_op` had been performed.
 
-  If `ignore_mask` is not `None`, then the increment of the variables is
-  performed using only the elements of `predictions` and `labels` whose
-  corresponding value in `ignore_mask` is `False`.
+  If `weights` is `None`, all entries are assumed to have weight 1. Note that
+  a weight of 0 effectively discards an entry from consideration.
 
   Args:
     predictions: A floating point `Tensor` of arbitrary shape and whose values
       are in the range `[0, 1]`.
     labels: A binary `Tensor` whose shape matches `predictions`.
     thresholds: A python list or tuple of float thresholds in `[0, 1]`.
-    ignore_mask: An optional, binary tensor whose size matches `predictions`.
+    weights: An optional, floating point `Tensor` with the same shape as
+      `predictions`.
 
   Returns:
     true_positive: A variable of shape [len(thresholds)].
@@ -635,7 +671,7 @@ def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
 
   Raises:
     ValueError: If the shape of `predictions` and `labels` do not match or if
-      `ignore_mask` is not `None` and its shape doesn't match `predictions`
+      `weights` is not `None` and its shape doesn't match `predictions`
       or if either `metrics_collections` or `updates_collections` are not a list
       or tuple.
   """
@@ -645,9 +681,9 @@ def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
 
   num_thresholds = len(thresholds)
 
-  # Reshape predictions and labels to be column vectors
+  # Reshape predictions and labels
   predictions = array_ops.reshape(predictions, [-1, 1])
-  labels = array_ops.reshape(labels, [-1, 1])
+  labels = array_ops.reshape(math_ops.cast(labels, dtype=dtypes.bool), [1, -1])
 
   # Use static shape if known.
   num_predictions = predictions.get_shape().as_list()[0]
@@ -660,15 +696,14 @@ def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
       array_ops.pack([1, num_predictions]))
 
   # Tile the predictions after thresholding them across different thresholds.
-  pred_tiled = math_ops.cast(
-      math_ops.greater(
-          array_ops.tile(
-              array_ops.transpose(predictions), [num_thresholds, 1]),
-          thresh_tiled),
-      dtype=dtypes.int32)
+  pred_is_pos = math_ops.greater(
+      array_ops.tile(array_ops.transpose(predictions), [num_thresholds, 1]),
+      thresh_tiled)
+  pred_is_neg = math_ops.logical_not(pred_is_pos)
+
   # Tile labels by number of thresholds
-  labels_tiled = array_ops.tile(array_ops.transpose(labels),
-                                [num_thresholds, 1])
+  label_is_pos = array_ops.tile(labels, [num_thresholds, 1])
+  label_is_neg = math_ops.logical_not(label_is_pos)
 
   true_positives = _create_local('true_positives', shape=[num_thresholds])
   false_negatives = _create_local('false_negatives', shape=[num_thresholds])
@@ -676,41 +711,24 @@ def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
   false_positives = _create_local('false_positives', shape=[num_thresholds])
 
   is_true_positive = math_ops.to_float(
-      math_ops.logical_and(
-          math_ops.equal(labels_tiled, 1), math_ops.equal(pred_tiled, 1)))
+      math_ops.logical_and(label_is_pos, pred_is_pos))
   is_false_negative = math_ops.to_float(
-      math_ops.logical_and(
-          math_ops.equal(labels_tiled, 1), math_ops.equal(pred_tiled, 0)))
+      math_ops.logical_and(label_is_pos, pred_is_neg))
   is_false_positive = math_ops.to_float(
-      math_ops.logical_and(
-          math_ops.equal(labels_tiled, 0), math_ops.equal(pred_tiled, 1)))
+      math_ops.logical_and(label_is_neg, pred_is_pos))
   is_true_negative = math_ops.to_float(
-      math_ops.logical_and(
-          math_ops.equal(labels_tiled, 0), math_ops.equal(pred_tiled, 0)))
+      math_ops.logical_and(label_is_neg, pred_is_neg))
 
-  if ignore_mask is not None:
-    ignore_mask = array_ops.reshape(ignore_mask, [-1, 1])
-    mask_tiled = array_ops.tile(array_ops.transpose(ignore_mask),
-                                [num_thresholds, 1])
-
-    labels_tiled.get_shape().assert_is_compatible_with(mask_tiled.get_shape())
-    check_ops.assert_type(mask_tiled, dtypes.bool)
-    is_true_positive = math_ops.select(
-        mask_tiled,
-        array_ops.zeros_like(labels_tiled, dtype=dtypes.float32),
-        is_true_positive)
-    is_false_negative = math_ops.select(
-        mask_tiled,
-        array_ops.zeros_like(labels_tiled, dtype=dtypes.float32),
-        is_false_negative)
-    is_false_positive = math_ops.select(
-        mask_tiled,
-        array_ops.zeros_like(labels_tiled, dtype=dtypes.float32),
-        is_false_positive)
-    is_true_negative = math_ops.select(
-        mask_tiled,
-        array_ops.zeros_like(labels_tiled, dtype=dtypes.float32),
-        is_true_negative)
+  if weights is not None:
+    weights_tiled = array_ops.tile(
+        array_ops.reshape(weights, [1, -1]), [num_thresholds, 1])
+    thresh_tiled.get_shape().assert_is_compatible_with(
+        weights_tiled.get_shape())
+    check_ops.assert_type(weights_tiled, dtypes.float32)
+    is_true_positive *= weights_tiled
+    is_false_negative *= weights_tiled
+    is_false_positive *= weights_tiled
+    is_true_negative *= weights_tiled
 
   true_positives_update_op = state_ops.assign_add(
       true_positives, math_ops.reduce_sum(is_true_positive, 1))
@@ -726,7 +744,7 @@ def _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask=None):
           true_negatives_update_op, false_positives_update_op)
 
 
-def streaming_auc(predictions, labels, ignore_mask=None, num_thresholds=200,
+def streaming_auc(predictions, labels, weights=None, num_thresholds=200,
                   metrics_collections=None, updates_collections=None,
                   curve='ROC', name=None):
   """Computes the approximate AUC via a Riemann sum.
@@ -746,20 +764,20 @@ def streaming_auc(predictions, labels, ignore_mask=None, num_thresholds=200,
   numbers of thresholds more closely approximating the true AUC.
 
   To faciliate the estimation of the AUC over a stream of data, the function
-  creates an `update_op` operation whose behavior is dependent on the value of
-  `ignore_mask`. If `ignore_mask` is None, then `update_op` increments the
+  creates an `update_op` operation. `update_op` increments the
   `true_positives`, `true_negatives`, `false_positives` and `false_negatives`
-  counts with the number of each found in the current `predictions` and `labels`
-  `Tensors`. If `ignore_mask` is not `None`, then the increment is performed
-  using only the elements of `predictions` and `labels` whose corresponding
-  value in `ignore_mask` is `False`. In addition to performing the updates,
+  counts with the weighted number of each found in the current `predictions`
+  and `labels` `Tensors`. If `weights` is `None`, it is assumed that all
+  entries have weight 1. Note that a weight of 0 can be used to effectively
+  mask out and ignore specific entries. In addition to performing the updates,
   `update_op` also returns the `auc`.
 
   Args:
     predictions: A floating point `Tensor` of arbitrary shape and whose values
       are in the range `[0, 1]`.
     labels: A binary `Tensor` whose shape matches `predictions`.
-    ignore_mask: An optional, binary tensor whose size matches `predictions`.
+    weights: An optional, floating point `Tensor` of same shape as
+      `predictions`.
     num_thresholds: The number of thresholds to use when discretizing the roc
       curve.
     metrics_collections: An optional list of collections that `auc` should be
@@ -778,7 +796,7 @@ def streaming_auc(predictions, labels, ignore_mask=None, num_thresholds=200,
 
   Raises:
     ValueError: If the shape of `predictions` and `labels` do not match or if
-      `ignore_mask` is not `None` and its shape doesn't match `predictions` or
+      `weights` is not `None` and its shape doesn't match `predictions` or
       if either `metrics_collections` or `updates_collections` are not a list or
       tuple.
   """
@@ -792,7 +810,7 @@ def streaming_auc(predictions, labels, ignore_mask=None, num_thresholds=200,
     thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
 
     (tp, fn, tn, fp, tp_update_op, fn_update_op, tn_update_op,
-     fp_update_op) = _tp_fn_tn_fp(predictions, labels, thresholds, ignore_mask)
+     fp_update_op) = _tp_fn_tn_fp(predictions, labels, thresholds, weights)
 
     # Add epsilons to avoid dividing by 0.
     epsilon = 1.0e-6
@@ -827,8 +845,203 @@ def streaming_auc(predictions, labels, ignore_mask=None, num_thresholds=200,
     return auc, update_op
 
 
+def streaming_specificity_at_sensitivity(
+    predictions, labels, sensitivity, weights=None, num_thresholds=200,
+    metrics_collections=None, updates_collections=None, name=None):
+  """Computes the the specificity at a given sensitivity.
+
+  The `streaming_specificity_at_sensitivity` function creates four local
+  variables, `true_positives`, `true_negatives`, `false_positives` and
+  `false_negatives` that are used to compute the specificity at the given
+  sensitivity value. The threshold for the given sensitivity value is computed
+  and used to evaluate the corresponding specificity.
+
+  To faciliate the estimation of the metric over a stream of data, the function
+  creates an `update_op` operation. `update_op` increments the
+  `true_positives`, `true_negatives`, `false_positives` and `false_negatives`
+  counts with the weighted number of each found in the current `predictions`
+  and `labels` `Tensors`. If `weights` is `None`, it is assumed that all
+  entries have weight 1. Note that a weight of 0 can be used to effectively
+  mask out and ignore specific entries. In addition to performing the updates,
+  `update_op` also returns the `specificity`.
+
+  For additional information about specificity and sensitivity, see the
+  following: https://en.wikipedia.org/wiki/Sensitivity_and_specificity
+
+  Args:
+    predictions: A floating point `Tensor` of arbitrary shape and whose values
+      are in the range `[0, 1]`.
+    labels: A binary `Tensor` whose shape matches `predictions`.
+    sensitivity: A scalar value in range `[0, 1]`.
+    weights: An optional, floating point `Tensor` of same shape as
+      `predictions`.
+    num_thresholds: The number of thresholds to use for matching the given
+      sensitivity.
+    metrics_collections: An optional list of collections that `specificity`
+      should be added to.
+    updates_collections: An optional list of collections that `update_op` should
+      be added to.
+    name: An optional variable_scope name.
+
+  Returns:
+    specificity: A scalar tensor representing the specificity at the given
+      `specificity` value.
+    update_op: An operation that increments the `true_positives`,
+      `true_negatives`, `false_positives` and `false_negatives` variables
+      appropriately and whose value matches `specificity`.
+
+  Raises:
+    ValueError: If the shape of `predictions` and `labels` do not match or if
+      `weights` is not `None` and its shape doesn't match `predictions` or
+      `sensitivity` is not between 0 and 1 or if either `metrics_collections` or
+      `updates_collections` are not a list or tuple.
+  """
+  if sensitivity < 0 or sensitivity > 1:
+    raise ValueError('`sensitivity` must be in the range [0, 1].')
+
+  with variable_scope.variable_scope(name, 'specificity_at_sensitivity',
+                                     [predictions, labels]):
+    kepsilon = 1e-7  # to account for floating point imprecisions
+    thresholds = [(i + 1) * 1.0 / (num_thresholds - 1)
+                  for i in range(num_thresholds-2)]
+    thresholds = [0.0 - kepsilon] + thresholds + [1.0 - kepsilon]
+
+    (tp, fn, tn, fp, tp_update_op, fn_update_op, tn_update_op,
+     fp_update_op) = _tp_fn_tn_fp(predictions, labels, thresholds, weights)
+
+    assert array_ops.squeeze(fp).get_shape().as_list()[0] == num_thresholds
+
+    def compute_specificity_at_sensitivity(name):
+      """Computes the specificity at the given sensitivity.
+
+      Args:
+        name: The name of the operation.
+
+      Returns:
+        The specificity using the aggregated values.
+      """
+      sensitivities = math_ops.div(tp, tp + fn + kepsilon)
+
+      # We'll need to use this trick until tf.argmax allows us to specify
+      # whether we should use the first or last index in case of ties.
+      min_val = math_ops.reduce_min(math_ops.abs(sensitivities - sensitivity))
+      indices_at_minval = math_ops.equal(
+          math_ops.abs(sensitivities - sensitivity), min_val)
+      indices_at_minval = math_ops.to_int64(indices_at_minval)
+      indices_at_minval = math_ops.cumsum(indices_at_minval)
+      tf_index = math_ops.argmax(indices_at_minval, 0)
+      tf_index = math_ops.cast(tf_index, dtypes.int32)
+
+      # Now, we have the implicit threshold, so compute the specificity:
+      return math_ops.div(tn[tf_index],
+                          tn[tf_index] + fp[tf_index] + kepsilon,
+                          name)
+
+    specificity = compute_specificity_at_sensitivity('value')
+    with ops.control_dependencies(
+        [tp_update_op, fn_update_op, tn_update_op, fp_update_op]):
+      update_op = compute_specificity_at_sensitivity('update_op')
+
+    if metrics_collections:
+      ops.add_to_collections(metrics_collections, specificity)
+
+    if updates_collections:
+      ops.add_to_collections(updates_collections, update_op)
+
+    return specificity, update_op
+
+
+def streaming_sensitivity_at_specificity(
+    predictions, labels, specificity, weights=None, num_thresholds=200,
+    metrics_collections=None, updates_collections=None, name=None):
+  """Computes the the specificity at a given sensitivity.
+
+  The `streaming_sensitivity_at_specificity` function creates four local
+  variables, `true_positives`, `true_negatives`, `false_positives` and
+  `false_negatives` that are used to compute the sensitivity at the given
+  specificity value. The threshold for the given specificity value is computed
+  and used to evaluate the corresponding sensitivity.
+
+  To faciliate the estimation of the metric over a stream of data, the function
+  creates an `update_op` operation. `update_op` increments the
+  `true_positives`, `true_negatives`, `false_positives` and `false_negatives`
+  counts with the weighted number of each found in the current `predictions`
+  and `labels` `Tensors`. If `weights` is `None`, it is assumed that all
+  entries have weight 1. Note that a weight of 0 can be used to effectively
+  mask out and ignore specific entries. In addition to performing the updates,
+  `update_op` also returns the `sensitivity`.
+
+  For additional information about specificity and sensitivity, see the
+  following: https://en.wikipedia.org/wiki/Sensitivity_and_specificity
+
+  Args:
+    predictions: A floating point `Tensor` of arbitrary shape and whose values
+      are in the range `[0, 1]`.
+    labels: A binary `Tensor` whose shape matches `predictions`.
+    specificity: A scalar value in range `[0, 1]`.
+    weights: An optional, floating point `Tensor` of same shape as
+      `predictions`.
+    num_thresholds: The number of thresholds to use for matching the given
+      specificity.
+    metrics_collections: An optional list of collections that `sensitivity`
+      should be added to.
+    updates_collections: An optional list of collections that `update_op` should
+      be added to.
+    name: An optional variable_scope name.
+
+  Returns:
+    sensitivity: A scalar tensor representing the sensitivity at the given
+      `specificity` value.
+    update_op: An operation that increments the `true_positives`,
+      `true_negatives`, `false_positives` and `false_negatives` variables
+      appropriately and whose value matches `sensitivity`.
+
+  Raises:
+    ValueError: If the shape of `predictions` and `labels` do not match or if
+      `weights` is not `None` and its shape doesn't match `predictions` or
+      `specificity` is not between 0 and 1 or if either `metrics_collections` or
+      `updates_collections` are not a list or tuple.
+  """
+  if specificity < 0 or specificity > 1:
+    raise ValueError('`specificity` must be in the range [0, 1].')
+
+  with variable_scope.variable_scope(name, 'sensitivity_at_specificity',
+                                     [predictions, labels]):
+    kepsilon = 1e-7  # to account for floating point imprecisions
+    thresholds = [(i + 1) * 1.0 / (num_thresholds - 1)
+                  for i in range(num_thresholds-2)]
+    thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
+
+    (tp, fn, tn, fp, tp_update_op, fn_update_op, tn_update_op,
+     fp_update_op) = _tp_fn_tn_fp(predictions, labels, thresholds, weights)
+    assert array_ops.squeeze(fp).get_shape().as_list()[0] == num_thresholds
+
+    def compute_sensitivity_at_specificity(name):
+      specificities = math_ops.div(tn, tn + fp + kepsilon)
+      tf_index = math_ops.argmin(math_ops.abs(specificities - specificity), 0)
+      tf_index = math_ops.cast(tf_index, dtypes.int32)
+
+      # Now, we have the implicit threshold, so compute the sensitivity:
+      return math_ops.div(tp[tf_index],
+                          tp[tf_index] + fn[tf_index] + kepsilon,
+                          name)
+
+    sensitivity = compute_sensitivity_at_specificity('value')
+    with ops.control_dependencies(
+        [tp_update_op, fn_update_op, tn_update_op, fp_update_op]):
+      update_op = compute_sensitivity_at_specificity('update_op')
+
+    if metrics_collections:
+      ops.add_to_collections(metrics_collections, sensitivity)
+
+    if updates_collections:
+      ops.add_to_collections(updates_collections, update_op)
+
+    return sensitivity, update_op
+
+
 def streaming_precision_at_thresholds(predictions, labels, thresholds,
-                                      ignore_mask=None,
+                                      weights=None,
                                       metrics_collections=None,
                                       updates_collections=None, name=None):
   """Computes precision values for different `thresholds` on `predictions`.
@@ -836,13 +1049,12 @@ def streaming_precision_at_thresholds(predictions, labels, thresholds,
   The `streaming_precision_at_thresholds` function creates four local variables,
   `true_positives`, `true_negatives`, `false_positives` and `false_negatives`
   for various values of thresholds.
-  `precision[i]` is defined as the number of values in `predictions` above
+  `precision[i]` is defined as the total weight of values in `predictions` above
   `thresholds[i]` whose corresponding entry in `labels` is `True`
-  (`true_positives[i]`) divided by the number of values in `predictions`
+  (`true_positives[i]`) divided by the total weight of values in `predictions`
   above `thresholds[i]` (`true_positives[i] + false_positives[i]`).
 
-  If `ignore_mask` is not None then only values whose corresponding value in
-  `ignore_mask` is `False` are considered.
+  If `weights` is `None` then all entries are assumed to have equal weight 1.
 
   `precision` is returned along with an `update_op` whose value equals that of
   `precision`.
@@ -852,7 +1064,8 @@ def streaming_precision_at_thresholds(predictions, labels, thresholds,
       are in the range `[0, 1]`.
     labels: A binary `Tensor` whose shape matches `predictions`.
     thresholds: A python list or tuple of float thresholds in `[0, 1]`.
-    ignore_mask: An optional, binary tensor whose size matches `predictions`.
+    weights: An optional, floating point `Tensor` of same shape as
+      `predictions`.
     metrics_collections: An optional list of collections that `auc` should be
       added to.
     updates_collections: An optional list of collections that `update_op` should
@@ -867,15 +1080,18 @@ def streaming_precision_at_thresholds(predictions, labels, thresholds,
 
   Raises:
     ValueError: If the shape of `predictions` and `labels` do not match or if
-      `ignore_mask` is not `None` and its shape doesn't match `predictions`
+      `weights` is not `None` and its shape doesn't match `predictions`
       or if either `metrics_collections` or `updates_collections` are not a list
       or tuple.
   """
   with variable_scope.variable_scope(name, 'precision_at_thresholds',
                                      [predictions, labels]):
+
+    # TODO(nsilberman): Replace with only tp and fp, this results in unnecessary
+    # variable creation. b/30842882
     (true_positives, _, _, false_positives, true_positives_compute_op, _, _,
      false_positives_compute_op,) = _tp_fn_tn_fp(
-         predictions, labels, thresholds, ignore_mask)
+         predictions, labels, thresholds, weights)
 
     # avoid division by zero
     epsilon = 1e-7
@@ -900,20 +1116,19 @@ def streaming_precision_at_thresholds(predictions, labels, thresholds,
 
 
 def streaming_recall_at_thresholds(predictions, labels, thresholds,
-                                   ignore_mask=None, metrics_collections=None,
+                                   weights=None, metrics_collections=None,
                                    updates_collections=None, name=None):
   """Computes various recall values for different `thresholds` on `predictions`.
 
   The `streaming_recall_at_thresholds` function creates four local variables,
   `true_positives`, `true_negatives`, `false_positives` and `false_negatives`
   for various values of thresholds.
-  `recall[i]` is defined as the number of values in `predictions` above
+  `recall[i]` is defined as the total weight of values in `predictions` above
   `thresholds[i]` whose corresponding entry in `labels` is `True`
-  (`true_positives[i]`) divided by the number of True values in `labels`
+  (`true_positives[i]`) divided by the total weight of True values in `labels`
   (`true_positives[i] + false_negatives[i]`).
 
-  If `ignore_mask` is not None then only values whose corresponding value in
-  `ignore_mask` is `False` are considered.
+  If `weights` is `None` then all entries are assumed to have equal weight 1.
 
   `recall` are returned along with an `update_op` whose value equals that of
   `recall`.
@@ -923,8 +1138,9 @@ def streaming_recall_at_thresholds(predictions, labels, thresholds,
       are in the range `[0, 1]`.
     labels: A binary `Tensor` whose shape matches `predictions`.
     thresholds: A python list or tuple of float thresholds in `[0, 1]`.
-    ignore_mask: An optional, binary tensor whose size matches `predictions`.
-    metrics_collections: An optional list of collections that `auc` should be
+    weights: An optional, floating point `Tensor` of same shape as
+      `predictions`.
+    metrics_collections: An optional list of collections that `recall` should be
       added to.
     updates_collections: An optional list of collections that `update_op` should
       be added to.
@@ -938,7 +1154,7 @@ def streaming_recall_at_thresholds(predictions, labels, thresholds,
 
   Raises:
     ValueError: If the shape of `predictions` and `labels` do not match or if
-      `ignore_mask` is not `None` and its shape doesn't match `predictions`
+      `weights` is not `None` and its shape doesn't match `predictions`
       or if either `metrics_collections` or `updates_collections` are not a list
       or tuple.
   """
@@ -946,7 +1162,7 @@ def streaming_recall_at_thresholds(predictions, labels, thresholds,
                                      [predictions, labels]):
     (true_positives, false_negatives, _, _, true_positives_compute_op,
      false_negatives_compute_op, _, _,) = _tp_fn_tn_fp(
-         predictions, labels, thresholds, ignore_mask)
+         predictions, labels, thresholds, weights)
 
     # avoid division by zero
     epsilon = 1e-7
