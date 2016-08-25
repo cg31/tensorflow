@@ -254,7 +254,7 @@ def rank_internal(input, name=None, optimize=True):
 
 # DEPRECATED use init_ops.zeros_initializer
 # TODO(irving) Move it to init_ops.py
-def zeros_initializer(shape, dtype=dtypes.float32):
+def zeros_initializer(shape, dtype=dtypes.float32, partition_info=None):
   """An adaptor for zeros() to match the Initializer spec."""
   return zeros(shape, dtype)
 
@@ -1317,15 +1317,17 @@ def sparse_placeholder(dtype, shape=None, name=None):
   """
   if shape is None:
     shape = placeholder(
-        dtypes.int64, name=(name + "/shape") if name is not None else None)
+        dtypes.int64, shape=[None],
+        name=(name + "/shape") if name is not None else None)
   else:
     shape = ops.convert_to_tensor(
         shape, name=(name + "/shape") if name is not None else None)
   return ops.SparseTensor(
       values=placeholder(
-          dtype, name=(name + "/values") if name is not None else None),
+          dtype, shape=[None],
+          name=(name + "/values") if name is not None else None),
       indices=placeholder(
-          dtypes.int64,
+          dtypes.int64, shape=[None, None],
           name=(name + "/indices") if name is not None else None),
       shape=shape
   )
@@ -1413,11 +1415,14 @@ def meshgrid(*args, **kwargs):
   Examples:
 
   Calling `X, Y = meshgrid(x, y)` with the tensors
+
   ```prettyprint
     x = [1, 2, 3]
     y = [4, 5, 6]
   ```
+
   results in
+
   ```prettyprint
     X = [[1, 1, 1],
          [2, 2, 2],
