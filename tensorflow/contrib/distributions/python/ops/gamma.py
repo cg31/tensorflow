@@ -50,6 +50,9 @@ class Gamma(distribution.Distribution):
 
   where GammaInc is the incomplete lower Gamma function.
 
+  WARNING: This distribution may draw 0-valued samples for small alpha values.
+      See the note on `tf.random_gamma`.
+
   Examples:
 
   ```python
@@ -89,7 +92,7 @@ class Gamma(distribution.Distribution):
     Raises:
       TypeError: if `alpha` and `beta` are different dtypes.
     """
-    with ops.name_scope(name, values=[alpha, beta]):
+    with ops.name_scope(name, values=[alpha, beta]) as ns:
       with ops.control_dependencies([
           check_ops.assert_positive(alpha),
           check_ops.assert_positive(beta),
@@ -102,7 +105,7 @@ class Gamma(distribution.Distribution):
             parameters={"alpha": self._alpha, "beta": self._beta},
             validate_args=validate_args,
             allow_nan_stats=allow_nan_stats,
-            name=name)
+            name=ns)
 
   @property
   def alpha(self):

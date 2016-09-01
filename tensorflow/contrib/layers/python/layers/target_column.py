@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import inspect
-
 import six
 
 from tensorflow.contrib import losses
@@ -294,7 +292,7 @@ class _MultiClassTargetColumn(_TargetColumn):
 
   def _default_eval_metrics(self):
     if self._num_label_columns == 1:
-      return _get_default_binary_metrics_for_eval(thresholds=[.5])
+      return get_default_binary_metrics_for_eval(thresholds=[.5])
     return {}
 
   def get_eval_ops(self, features, logits, targets, metrics=None):
@@ -411,15 +409,13 @@ def _run_metrics(predictions, targets, metrics, weights):
   result = {}
   targets = math_ops.cast(targets, predictions.dtype)
   for name, metric in six.iteritems(metrics or {}):
-    if "weights" in inspect.getargspec(metric)[0]:
-      result[name] = metric(predictions, targets, weights=weights)
-    else:
-      result[name] = metric(predictions, targets)
+    result[name] = metrics_lib.run_metric(
+        metric, predictions, targets, weights=weights)
 
   return result
 
 
-def _get_default_binary_metrics_for_eval(thresholds):
+def get_default_binary_metrics_for_eval(thresholds):
   """Returns a dictionary of basic metrics for logistic regression.
 
   Args:
