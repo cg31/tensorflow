@@ -98,6 +98,7 @@ tf_proto_library(
     srcs = glob(
         ["**/*.proto"],
         exclude = [
+            "debug/debug_service.proto",
             "protobuf/worker.proto",
             "protobuf/worker_service.proto",
             "protobuf/master.proto",
@@ -1091,6 +1092,7 @@ filegroup(
         "lib/core/refcount.h",
         "lib/core/status.h",
         "lib/core/stringpiece.h",
+        "lib/core/threadpool.h",
         "lib/gtl/array_slice.h",
         "lib/gtl/array_slice_internal.h",
         "lib/gtl/inlined_vector.h",
@@ -1342,6 +1344,7 @@ cc_library(
     srcs = ["platform/test_main.cc"],
     copts = tf_copts(),
     linkopts = ["-lm"],
+    visibility = ["//tensorflow:internal"],
     deps = [
         ":lib",
         ":lib_internal",
