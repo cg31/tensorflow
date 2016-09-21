@@ -12,8 +12,8 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
     print("tf_repo_name was specified to tf_workspace but is no longer used and will be removed in the future.")
   # These lines need to be changed when updating Eigen. They are parsed from
   # this file by the cmake and make builds to determine the eigen version and hash.
-  eigen_version = "6d4cd6e5cdd9"
-  eigen_sha256 = "c8df78734ba9b402b94586be5eda78ee75e0244a99e8ae4183785710c44eb93f"
+  eigen_version = "6bcd74d2fa40"
+  eigen_sha256 = "df3ca8a395fb615003762b8748c03e3aa7a8932b5674dbb5a6bd3343cc3f408d"
 
   native.new_http_archive(
     name = "eigen_archive",
@@ -26,7 +26,7 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
   native.git_repository(
     name = "com_googlesource_code_re2",
     remote = "https://github.com/google/re2.git",
-    commit = "fc6337a382bfd4f7c861abea08f872d3c85b31da",
+    commit = "7bab3dc83df6a838cc004cc7a7f51d5fe1a427d5",
   )
 
   native.git_repository(
@@ -203,4 +203,9 @@ def tf_workspace(path_prefix = "", tf_repo_name = ""):
     url = "http://zlib.net/zlib-1.2.8.tar.gz",
     sha256 = "36658cb768a54c1d4dec43c3116c27ed893e88b02ecfcb44f2166f9c0b7f2a0d",
     build_file = str(Label("//:zlib.BUILD")),
+  )
+
+  native.bind(
+    name = "zlib",
+    actual = "@zlib_archive//:zlib",
   )

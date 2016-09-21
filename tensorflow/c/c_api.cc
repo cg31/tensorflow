@@ -15,9 +15,11 @@ limitations under the License.
 
 #include "tensorflow/c/c_api.h"
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
+#include "tensorflow/core/common_runtime/shape_refiner.h"
 #include "tensorflow/core/framework/log_memory.h"
 #include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -26,7 +28,6 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/graph/node_builder.h"
-#include "tensorflow/core/graph/shape_refiner.h"
 #include "tensorflow/core/lib/core/coding.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -664,7 +665,10 @@ extern "C" {
 
 struct TF_Graph {
   TF_Graph()
-      : graph(OpRegistry::Global()), num_sessions(0), delete_requested(false) {}
+      : graph(OpRegistry::Global()),
+        refiner(graph.op_registry()),
+        num_sessions(0),
+        delete_requested(false) {}
   mutex mu;
   Graph graph GUARDED_BY(mu);
 
@@ -690,6 +694,7 @@ struct TF_OperationDescription {
 
   NodeBuilder node_builder;
   TF_Graph* graph;
+  std::vector<tensorflow::string> colocation_constraints;
 };
 
 struct TF_Operation {
@@ -853,6 +858,11 @@ void TF_AddInputList(TF_OperationDescription* desc, const TF_Port* inputs,
 
 void TF_AddControlInput(TF_OperationDescription* desc, TF_Operation* input) {
   desc->node_builder.ControlInput(&input->node);
+}
+
+void TF_ColocateWith(TF_OperationDescription* desc, TF_Operation* op) {
+  desc->colocation_constraints.emplace_back(tensorflow::strings::StrCat(
+      tensorflow::kColocationGroupPrefix, op->node.name()));
 }
 
 void TF_SetAttrString(TF_OperationDescription* desc, const char* attr_name,
@@ -1055,6 +1065,10 @@ TF_Operation* TF_FinishOperation(TF_OperationDescription* desc,
     status->status = InvalidArgument("Duplicate node name in graph: '",
                                      desc->node_builder.node_name(), "'");
   } else {
+    std::sort(desc->colocation_constraints.begin(),
+              desc->colocation_constraints.end());
+    desc->node_builder.Attr(tensorflow::kColocationAttrName,
+                            desc->colocation_constraints);
     status->status = desc->node_builder.Finalize(&desc->graph->graph, &ret);
 
     if (status->status.ok()) {

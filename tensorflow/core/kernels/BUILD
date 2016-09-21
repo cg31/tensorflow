@@ -1875,6 +1875,9 @@ tf_cuda_cc_test(
 
 # Android libraries -----------------------------------------------------------
 
+# Changes to the Android srcs here should be replicated in
+# tensorflow/contrib/makefile/tf_op_files.txt
+# LINT.IfChange
 filegroup(
     name = "android_srcs",
     srcs = [
@@ -2180,6 +2183,7 @@ filegroup(
     ),
     visibility = ["//visibility:public"],
 )
+# LINT.ThenChange(https://www.tensorflow.org/code/tensorflow/contrib/makefile/tf_op_files.txt)
 
 cc_library(
     name = "android_tensorflow_kernels",
@@ -2199,30 +2203,6 @@ cc_library(
     deps = [
         "//tensorflow/core:android_tensorflow_lib_lite",
         "//tensorflow/core:protos_cc",
-        "//third_party/eigen3",
-    ],
-    alwayslink = 1,
-)
-
-cc_library(
-    name = "android_tensorflow_kernels_no_rtti_lite_runtime",
-    srcs = select({
-        "//tensorflow:android": [
-            "//tensorflow/core/kernels:android_core_ops",
-            "//tensorflow/core/kernels:android_extended_ops",
-        ],
-        "//conditions:default": [],
-    }),
-    copts = tf_copts() + tf_opts_nortti_if_android(),
-    tags = [
-        "manual",
-        "notap",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//base",
-        "//tensorflow/core:android_proto_lib_no_rtti_lite_runtime",
-        "//tensorflow/core:android_tensorflow_lib_lite_no_rtti_lite_runtime",
         "//third_party/eigen3",
     ],
     alwayslink = 1,

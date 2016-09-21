@@ -5,7 +5,6 @@
 * **[Building Graphs](../../api_docs/python/framework.md)**:
   * [`add_to_collection`](../../api_docs/python/framework.md#add_to_collection)
   * [`as_dtype`](../../api_docs/python/framework.md#as_dtype)
-  * [`bytes`](../../api_docs/python/framework.md#bytes)
   * [`container`](../../api_docs/python/framework.md#container)
   * [`control_dependencies`](../../api_docs/python/framework.md#control_dependencies)
   * [`convert_to_tensor`](../../api_docs/python/framework.md#convert_to_tensor)
@@ -894,6 +893,7 @@
 * **[Losses (contrib)](../../api_docs/python/contrib.losses.md)**:
   * [`absolute_difference`](../../api_docs/python/contrib.losses.md#absolute_difference)
   * [`add_loss`](../../api_docs/python/contrib.losses.md#add_loss)
+  * [`compute_weighted_loss`](../../api_docs/python/contrib.losses.md#compute_weighted_loss)
   * [`cosine_distance`](../../api_docs/python/contrib.losses.md#cosine_distance)
   * [`get_losses`](../../api_docs/python/contrib.losses.md#get_losses)
   * [`get_regularization_losses`](../../api_docs/python/contrib.losses.md#get_regularization_losses)
@@ -913,6 +913,7 @@
   * [`CoupledInputForgetGateLSTMCell`](../../api_docs/python/contrib.rnn.md#CoupledInputForgetGateLSTMCell)
   * [`GridLSTMCell`](../../api_docs/python/contrib.rnn.md#GridLSTMCell)
   * [`GRUBlockCell`](../../api_docs/python/contrib.rnn.md#GRUBlockCell)
+  * [`LayerNormBasicLSTMCell`](../../api_docs/python/contrib.rnn.md#LayerNormBasicLSTMCell)
   * [`LSTMBlockCell`](../../api_docs/python/contrib.rnn.md#LSTMBlockCell)
   * [`TimeFreqLSTMCell`](../../api_docs/python/contrib.rnn.md#TimeFreqLSTMCell)
 
@@ -928,12 +929,14 @@
   * [`set_union`](../../api_docs/python/contrib.metrics.md#set_union)
   * [`streaming_accuracy`](../../api_docs/python/contrib.metrics.md#streaming_accuracy)
   * [`streaming_auc`](../../api_docs/python/contrib.metrics.md#streaming_auc)
+  * [`streaming_covariance`](../../api_docs/python/contrib.metrics.md#streaming_covariance)
   * [`streaming_mean`](../../api_docs/python/contrib.metrics.md#streaming_mean)
   * [`streaming_mean_absolute_error`](../../api_docs/python/contrib.metrics.md#streaming_mean_absolute_error)
   * [`streaming_mean_cosine_distance`](../../api_docs/python/contrib.metrics.md#streaming_mean_cosine_distance)
   * [`streaming_mean_iou`](../../api_docs/python/contrib.metrics.md#streaming_mean_iou)
   * [`streaming_mean_relative_error`](../../api_docs/python/contrib.metrics.md#streaming_mean_relative_error)
   * [`streaming_mean_squared_error`](../../api_docs/python/contrib.metrics.md#streaming_mean_squared_error)
+  * [`streaming_pearson_correlation`](../../api_docs/python/contrib.metrics.md#streaming_pearson_correlation)
   * [`streaming_percentage_less`](../../api_docs/python/contrib.metrics.md#streaming_percentage_less)
   * [`streaming_precision`](../../api_docs/python/contrib.metrics.md#streaming_precision)
   * [`streaming_recall`](../../api_docs/python/contrib.metrics.md#streaming_recall)
