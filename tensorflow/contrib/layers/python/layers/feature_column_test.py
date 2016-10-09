@@ -22,6 +22,7 @@ from __future__ import print_function
 import os
 
 import tensorflow as tf
+import tensorflow.contrib.layers.python.layers.feature_column as fc
 
 
 class FeatureColumnTest(tf.test.TestCase):
@@ -83,8 +84,10 @@ class FeatureColumnTest(tf.test.TestCase):
     input_tensor_c2 = tf.SparseTensor(indices=[[0, 0], [1, 1], [2, 2]],
                                       values=[0, 1, 2], shape=[3, 3])
     with tf.variable_scope("run_1"):
-      b1 = b[0].to_dnn_input_layer(input_tensor_c1)
-      b2 = b[1].to_dnn_input_layer(input_tensor_c2)
+      b1 = tf.contrib.layers.input_from_feature_columns(
+          {b[0]: input_tensor_c1}, [b[0]])
+      b2 = tf.contrib.layers.input_from_feature_columns(
+          {b[1]: input_tensor_c2}, [b[1]])
     with self.test_session() as sess:
       sess.run(tf.initialize_all_variables())
       b1_value = b1.eval()
@@ -105,8 +108,10 @@ class FeatureColumnTest(tf.test.TestCase):
         [a3], dimension=4, combiner="mean",
         shared_embedding_name="my_shared_embedding")
     with tf.variable_scope("run_2"):
-      d1 = d[0].to_dnn_input_layer(input_tensor_c1)
-      e1 = e[0].to_dnn_input_layer(input_tensor_c1)
+      d1 = tf.contrib.layers.input_from_feature_columns(
+          {d[0]: input_tensor_c1}, [d[0]])
+      e1 = tf.contrib.layers.input_from_feature_columns(
+          {e[0]: input_tensor_c1}, [e[0]])
     with self.test_session() as sess:
       sess.run(tf.initialize_all_variables())
       d1_value = d1.eval()
@@ -406,6 +411,40 @@ class FeatureColumnTest(tf.test.TestCase):
             tf.FixedLenFeature([3], dtype=tf.float32,
                                default_value=[1., 0., 6.])}, config)
 
+  def testCreateSequenceFeatureSpec(self):
+    sparse_col = tf.contrib.layers.sparse_column_with_hash_bucket(
+        "sparse_column", hash_bucket_size=100)
+    embedding_col = tf.contrib.layers.embedding_column(
+        tf.contrib.layers.sparse_column_with_hash_bucket(
+            "sparse_column_for_embedding",
+            hash_bucket_size=10),
+        dimension=4)
+    sparse_id_col = tf.contrib.layers.sparse_column_with_keys(
+        "id_column", ["marlo", "omar", "stringer"])
+    weighted_id_col = tf.contrib.layers.weighted_sparse_column(
+        sparse_id_col, "id_weights_column")
+    real_valued_col1 = tf.contrib.layers.real_valued_column(
+        "real_valued_column", dimension=2)
+    real_valued_col2 = tf.contrib.layers.real_valued_column(
+        "real_valued_default_column", dimension=5, default_value=3.0)
+
+    feature_columns = set([sparse_col, embedding_col, weighted_id_col,
+                           real_valued_col1, real_valued_col2])
+
+    feature_spec = fc._create_sequence_feature_spec_for_parsing(feature_columns)
+
+    expected_feature_spec = {
+        "sparse_column": tf.VarLenFeature(tf.string),
+        "sparse_column_for_embedding": tf.VarLenFeature(tf.string),
+        "id_column": tf.VarLenFeature(tf.string),
+        "id_weights_column": tf.VarLenFeature(tf.float32),
+        "real_valued_column": tf.FixedLenSequenceFeature(
+            shape=[2], dtype=tf.float32, allow_missing=False),
+        "real_valued_default_column": tf.FixedLenSequenceFeature(
+            shape=[5], dtype=tf.float32, allow_missing=True)}
+
+    self.assertDictEqual(expected_feature_spec, feature_spec)
+
   def testMakePlaceHolderTensorsForBaseFeatures(self):
     sparse_col = tf.contrib.layers.sparse_column_with_hash_bucket(
         "sparse_column", hash_bucket_size=100)
@@ -448,13 +487,14 @@ class FeatureColumnTest(tf.test.TestCase):
                                    values=[0, 1, 2, 3],
                                    shape=[4, 4])
 
-    # Invoking 'embedding_column.to_dnn_input_layer' will create the embedding
+    # Invoking 'layers.input_from_feature_columns' will create the embedding
     # variable. Creating under scope 'run_1' so as to prevent name conflicts
     # when creating embedding variable for 'embedding_column_pretrained'.
     with tf.variable_scope("run_1"):
       with tf.variable_scope(embedding_col.name):
         # This will return a [4, 16] tensor which is same as embedding variable.
-        embeddings = embedding_col.to_dnn_input_layer(input_tensor)
+        embeddings = tf.contrib.layers.input_from_feature_columns(
+            {embedding_col: input_tensor}, [embedding_col])
 
     save = tf.train.Saver()
     checkpoint_path = os.path.join(self.get_temp_dir(), "model.ckpt")
@@ -468,14 +508,17 @@ class FeatureColumnTest(tf.test.TestCase):
         sparse_id_column=sparse_col,
         dimension=16,
         ckpt_to_load_from=checkpoint_path,
-        tensor_name_in_ckpt="run_1/object_in_image_embedding/weights")
+        tensor_name_in_ckpt=("run_1/object_in_image_embedding/"
+                             "input_from_feature_columns/object"
+                             "_in_image_embedding/weights"))
 
     with tf.variable_scope("run_2"):
       # This will initialize the embedding from provided checkpoint and return a
       # [4, 16] tensor which is same as embedding variable. Since we didn't
       # modify embeddings, this should be same as 'saved_embedding'.
-      pretrained_embeddings = embedding_col_initialized.to_dnn_input_layer(
-          input_tensor)
+      pretrained_embeddings = tf.contrib.layers.input_from_feature_columns(
+          {embedding_col_initialized: input_tensor},
+          [embedding_col_initialized])
 
     with self.test_session() as sess:
       sess.run(tf.initialize_all_variables())

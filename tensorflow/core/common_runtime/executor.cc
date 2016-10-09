@@ -462,8 +462,6 @@ class ExecutorState {
   void RunAsync(Executor::DoneCallback done);
 
  private:
-  typedef ExecutorState ME;
-
   // Either a tensor pointer (pass-by-reference) or a tensor (pass-by-value).
   // TODO(yuanbyu): A better way to do "has_value"?
   struct Entry {
@@ -1478,13 +1476,6 @@ void ExecutorState::PropagateOutputs(const TaggedNode& tagged_node,
     // At this point, this node is completely done.
     input_frame->GetIteration(input_iter)->outstanding_ops--;
     CleanupFramesIterations(input_frame, input_iter, ready);
-
-    // The execution of a node such as Enter may cause the completion of
-    // output_frame:output_iter, so clean up if output_frame:output_iter
-    // is indeed completed.
-    if (IsEnter(tagged_node.node)) {
-      CleanupFramesIterations(output_frame, output_iter, ready);
-    }
   }
 }
 
@@ -1661,7 +1652,7 @@ void ExecutorState::ScheduleReady(const TaggedNodeSeq& ready,
   if (inline_ready == nullptr) {
     // Schedule to run all the ready ops in thread pool.
     for (auto& tagged_node : ready) {
-      runner_(std::bind(&ME::Process, this, tagged_node, scheduled_usec));
+      runner_([=]() { Process(tagged_node, scheduled_usec); });
     }
     return;
   }
@@ -1676,7 +1667,7 @@ void ExecutorState::ScheduleReady(const TaggedNodeSeq& ready,
       if (curr_expensive_node) {
         // Dispatch to another thread since there is plenty of work to
         // do for this thread.
-        runner_(std::bind(&ME::Process, this, *curr_expensive_node,
+        runner_(std::bind(&ExecutorState::Process, this, *curr_expensive_node,
                           scheduled_usec));
       }
       curr_expensive_node = &tagged_node;
@@ -1689,8 +1680,8 @@ void ExecutorState::ScheduleReady(const TaggedNodeSeq& ready,
     } else {
       // There are inline nodes to run already. We dispatch this expensive
       // node to other thread.
-      runner_(
-          std::bind(&ME::Process, this, *curr_expensive_node, scheduled_usec));
+      runner_(std::bind(&ExecutorState::Process, this, *curr_expensive_node,
+                        scheduled_usec));
     }
   }
 }
@@ -1827,7 +1818,7 @@ void ExecutorState::Finish() {
   mu_.unlock();
   delete this;
   CHECK(done_cb != nullptr);
-  runner([done_cb, status]() { done_cb(status); });
+  runner([=]() { done_cb(status); });
 }
 
 bool ExecutorState::IsFrameDone(FrameState* frame) {

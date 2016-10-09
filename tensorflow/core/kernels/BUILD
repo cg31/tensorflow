@@ -88,14 +88,19 @@ tf_kernel_library(
 
 tf_kernel_library(
     name = "concat_lib",
-    srcs = ["concat_lib_cpu.cc"],
+    srcs = [
+        "concat_lib_cpu.cc",
+        "concat_lib_gpu.cc",
+    ],
     hdrs = [
         "concat_lib.h",
         "concat_lib_cpu.h",
     ],
     gpu_srcs = [
-        "concat_lib_gpu.cu.cc",
+        "concat_lib_gpu_impl.cu.cc",
         "concat_lib.h",
+        "cuda_device_array.h",
+        "cuda_device_array_gpu.h",
     ],
     deps = [
         ":bounds_check",
@@ -850,6 +855,8 @@ tf_kernel_libraries(
     prefixes = [
         "dynamic_partition_op",
         "dynamic_stitch_op",
+        "conditional_accumulator_base_op",
+        "conditional_accumulator_op",
         "barrier_ops",
         "fifo_queue_op",
         "priority_queue_op",
@@ -859,12 +866,15 @@ tf_kernel_libraries(
         "queue_ops",
         "random_shuffle_queue_op",
         "session_ops",
+        "sparse_conditional_accumulator_op",
         "stack_ops",
         "tensor_array_ops",
     ],
     deps = [
         ":bounds_check",
         ":concat_lib",
+        ":conditional_accumulator",
+        ":conditional_accumulator_base",
         ":fifo_queue",
         ":initializable_lookup_table",
         ":lookup_util",
@@ -872,8 +882,10 @@ tf_kernel_libraries(
         ":priority_queue",
         ":queue_base",
         ":queue_op",
+        ":sparse_conditional_accumulator",
         ":split_lib",
         ":tensor_array",
+        ":typed_conditional_accumulator_base",
         ":typed_queue",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:data_flow_ops_op_lib",
@@ -927,6 +939,47 @@ cc_library(
         ":typed_queue",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
+    ],
+)
+
+cc_library(
+    name = "conditional_accumulator_base",
+    srcs = ["conditional_accumulator_base.cc"],
+    hdrs = [
+        "conditional_accumulator_base.h",
+    ],
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//third_party/eigen3",
+    ],
+)
+
+cc_library(
+    name = "typed_conditional_accumulator_base",
+    hdrs = ["typed_conditional_accumulator_base.h"],
+    deps = [
+        ":conditional_accumulator_base",
+    ],
+)
+
+cc_library(
+    name = "conditional_accumulator",
+    hdrs = [
+        "conditional_accumulator.h",
+        "conditional_accumulator_base_op.h",
+    ],
+    deps = [
+        ":typed_conditional_accumulator_base",
+        "//tensorflow/core/kernels:fill_functor",
+    ],
+)
+
+cc_library(
+    name = "sparse_conditional_accumulator",
+    hdrs = ["sparse_conditional_accumulator.h"],
+    deps = [
+        ":typed_conditional_accumulator_base",
     ],
 )
 
@@ -1442,6 +1495,8 @@ tf_cuda_cc_test(
 tf_kernel_library(
     name = "conv_ops",
     srcs = [
+        "conv_grad_filter_ops.cc",
+        "conv_grad_input_ops.cc",
         "conv_grad_ops.cc",
         "conv_grad_ops_3d.cc",
         "deep_conv2d.cc",
@@ -2217,6 +2272,8 @@ filegroup(
         "check_numerics_op.cc",
         "control_flow_ops.cc",
         "conv_2d.h",
+        "conv_grad_filter_ops.cc",
+        "conv_grad_input_ops.cc",
         "conv_grad_ops.cc",
         "conv_grad_ops.h",
         "conv_ops.cc",
