@@ -42,6 +42,10 @@ tf_custom_op_library(
         "kernels/zero_initializer_op.h",
         "ops/variable_ops.cc",
     ],
+    gpu_srcs = [
+        "kernels/zero_initializer_op_gpu.cu.cc",
+        "kernels/zero_initializer_op.h",
+    ],
 )
 
 tf_gen_op_libs(
@@ -115,6 +119,7 @@ py_test(
     size = "small",
     srcs = ["python/ops/variables_test.py"],
     srcs_version = "PY2AND3",
+    tags = ["manual"],
     deps = ["//tensorflow:tensorflow_py"],
 )
 

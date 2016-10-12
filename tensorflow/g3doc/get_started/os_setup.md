@@ -814,6 +814,10 @@ Note that this setup still requires you to rebuild the
 a C++ file; add, delete, or move any python file; or if you change bazel build
 rules.
 
+Note also that `bazel test` will not always properly resolve dependencies
+through these symlinks, so test results may be unreliable. A workaround is to
+remove the `_python_build` directory before running `bazel test`.
+
 ## Train your first TensorFlow neural net model
 
 Starting from the root of your source tree, run:
@@ -1085,3 +1089,25 @@ This can be resolved by create a symbolic link:
 ```bash
 ln -sf /usr/local/cuda/lib/libcuda.dylib /usr/local/cuda/lib/libcuda.1.dylib
 ```
+
+### Mac OS X: RuntimeError: Broken toolchain: cannot link a simple C program
+
+On Mac OS X, when installing tensorflow you might see lots of warnings and errors, ending with a `Broken toolchain: cannot link a simple C program` message:
+
+```
+>>> sudo pip install --upgrade $TF_BINARY_URL
+
+...<lots more warnings and errors>
+
+You have not agreed to the Xcode license agreements, please run 'xcodebuild -license' (for user-level acceptance) or 'sudo xcodebuild -license' (for system-wide acceptance) from within a Terminal window to review and agree to the Xcode license agreements.
+
+...<more stack trace output>
+
+  File "numpy/core/setup.py", line 653, in get_mathlib_info
+
+    raise RuntimeError("Broken toolchain: cannot link a simple C program")
+
+RuntimeError: Broken toolchain: cannot link a simple C program
+```
+
+This is typically because you have the Xcode build tools installed, but you still need to accept the license agreements.  To resolve it, accept the license agreement by opening Xcode, or by running `xcodebuild -license` from the command line.
