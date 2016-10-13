@@ -240,6 +240,7 @@
   * [`reduce_max`](../../api_docs/python/math_ops.md#reduce_max)
   * [`reduce_mean`](../../api_docs/python/math_ops.md#reduce_mean)
   * [`reduce_min`](../../api_docs/python/math_ops.md#reduce_min)
+  * [`reduce_nnz`](../../api_docs/python/math_ops.md#reduce_nnz)
   * [`reduce_prod`](../../api_docs/python/math_ops.md#reduce_prod)
   * [`reduce_sum`](../../api_docs/python/math_ops.md#reduce_sum)
   * [`round`](../../api_docs/python/math_ops.md#round)
@@ -698,7 +699,6 @@
   * [`viterbi_decode`](../../api_docs/python/contrib.crf.md#viterbi_decode)
 
 * **[Statistical distributions (contrib)](../../api_docs/python/contrib.distributions.md)**:
-  * [`BaseDistribution`](../../api_docs/python/contrib.distributions.md#BaseDistribution)
   * [`Bernoulli`](../../api_docs/python/contrib.distributions.md#Bernoulli)
   * [`BernoulliWithSigmoidP`](../../api_docs/python/contrib.distributions.md#BernoulliWithSigmoidP)
   * [`Beta`](../../api_docs/python/contrib.distributions.md#Beta)

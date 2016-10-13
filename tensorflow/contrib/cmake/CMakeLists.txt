@@ -56,6 +56,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 # External dependencies
+include(zlib)
 include(gif)
 include(png)
 include(jpeg)

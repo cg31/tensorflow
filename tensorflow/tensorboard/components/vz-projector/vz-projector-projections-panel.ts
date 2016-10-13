@@ -19,17 +19,16 @@ import {ProjectorInput} from './vz-projector-input';
 // tslint:disable-next-line:no-unused-variable
 import {PolymerElement, PolymerHTMLElement} from './vz-projector-util';
 
-
 // tslint:disable-next-line
 export let ProjectionsPanelPolymer = PolymerElement({
   is: 'vz-projector-projections-panel',
   properties: {
+    is3d: {type: Boolean, value: true, observer: '_dimensionsObserver'},
     // PCA projection.
     pcaComponents: {type: Array, value: d3.range(1, 11)},
     pcaX: {type: Number, value: 1, observer: 'showPCA'},
     pcaY: {type: Number, value: 2, observer: 'showPCA'},
     pcaZ: {type: Number, value: 3, observer: 'showPCA'},
-    hasPcaZ: {type: Boolean, value: true},
     // Custom projection.
     selectedSearchByMetadataOption: {
       type: String,
@@ -44,15 +43,15 @@ export let ProjectionsPanelPolymer = PolymerElement({
  */
 export class ProjectionsPanel extends ProjectionsPanelPolymer {
   selectedSearchByMetadataOption: string;
+  is3d: boolean;
 
   private projector: Projector;
+  private currentProjection: Projection;
 
   // The working subset of the data source's original data set.
   private currentDataSet: DataSet;
   private dim: number;
 
-  /** Number of dimensions for the scatter plot. */
-  private dimension: number;
   /** T-SNE perplexity. Roughly how many neighbors each point influences. */
   private perplexity: number;
   /** T-SNE learning rate. */
@@ -70,7 +69,6 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
   private pcaX: number;
   private pcaY: number;
   private pcaZ: number;
-  private hasPcaZ: boolean;
 
   /** Polymer elements. */
   private runTsneButton: d3.Selection<HTMLButtonElement>;
@@ -81,14 +79,11 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
   initialize(projector: Projector) {
     this.projector = projector;
 
-    this.dimension = 3;
+    this.is3d = true;
 
     // Set up TSNE projections.
     this.perplexity = 30;
     this.learningRate = 10;
-
-    // Set up PCA projections.
-    this.hasPcaZ = true;
 
     // Setup Custom projections.
     this.centroidValues = {xLeft: null, xRight: null, yUp: null, yDown: null};
@@ -111,27 +106,6 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
       self.showTab(id);
     });
 
-    // Unknown why, but the polymer toggle button stops working
-    // as soon as you do d3.select() on it.
-    let tsneToggle = this.querySelector('#tsne-toggle') as HTMLInputElement;
-    let zCheckbox = this.querySelector('#z-checkbox') as HTMLInputElement;
-
-    // PCA controls.
-    zCheckbox.addEventListener('change', () => {
-      // Make sure tsne stays in the same dimension as PCA.
-      this.dimension = this.hasPcaZ ? 3 : 2;
-      tsneToggle.checked = this.hasPcaZ;
-      this.showPCA();
-    });
-
-    // TSNE controls.
-    tsneToggle.addEventListener('change', () => {
-      // Make sure PCA stays in the same dimension as tsne.
-      this.hasPcaZ = tsneToggle.checked;
-      this.dimension = tsneToggle.checked ? 3 : 2;
-      this.showTSNE();
-    });
-
     this.runTsneButton = this.dom.select('.run-tsne');
     this.runTsneButton.on('click', () => this.runTSNE());
     this.stopTsneButton = this.dom.select('.stop-tsne');
@@ -139,22 +113,22 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
       this.projector.currentDataSet.stopTSNE();
     });
 
-    let perplexityInput = this.dom.select('.tsne-perplexity input');
+    let perplexitySlider = this.$$('#perplexity-slider') as HTMLInputElement;
     let updatePerplexity = () => {
-      this.perplexity = +perplexityInput.property('value');
+      this.perplexity = +perplexitySlider.value;
       this.dom.select('.tsne-perplexity span').text(this.perplexity);
     };
-    perplexityInput.property('value', this.perplexity)
-        .on('input', updatePerplexity);
+    perplexitySlider.value = this.perplexity.toString();
+    perplexitySlider.addEventListener('change', updatePerplexity);
     updatePerplexity();
 
-    let learningRateInput = this.dom.select('.tsne-learning-rate input');
+    let learningRateInput =
+        this.$$('#learning-rate-slider') as HTMLInputElement;
     let updateLearningRate = () => {
-      let val = +learningRateInput.property('value');
-      this.learningRate = Math.pow(10, val);
+      this.learningRate = Math.pow(10, +learningRateInput.value);
       this.dom.select('.tsne-learning-rate span').text(this.learningRate);
     };
-    learningRateInput.property('value', 1).on('input', updateLearningRate);
+    learningRateInput.addEventListener('change', updateLearningRate);
     updateLearningRate();
   }
 
@@ -170,6 +144,14 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     this.dom.select('#pca-sampling')
         .style('display', dataSet.dim[1] > PCA_SAMPLE_DIM ? null : 'none');
     this.showTab('pca');
+  }
+
+  _dimensionsObserver() {
+    if (this.currentProjection === 'pca') {
+      this.showPCA();
+    } else if (this.currentProjection === 'tsne') {
+      this.showTSNE();
+    }
   }
 
   metadataChanged(metadata: MetadataInfo) {
@@ -191,6 +173,11 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
   }
 
   public showTab(id: Projection) {
+    if (id === this.currentProjection) {
+      return;
+    }
+    this.currentProjection = id;
+
     let tab = this.dom.select('.ink-tab[data-tab="' + id + '"]');
     let pane =
         d3.select((tab.node() as HTMLElement).parentNode.parentNode.parentNode);
@@ -216,9 +203,8 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
         // Accessors.
         i => this.currentDataSet.points[i].projections['tsne-0'],
         i => this.currentDataSet.points[i].projections['tsne-1'],
-        this.dimension === 3 ?
-            (i => this.currentDataSet.points[i].projections['tsne-2']) :
-            null,
+        this.is3d ? (i => this.currentDataSet.points[i].projections['tsne-2']) :
+                    null,
         // Axis labels.
         'tsne-0', 'tsne-1', true /** deferUpdate */);
 
@@ -233,7 +219,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     this.runTsneButton.attr('disabled', true);
     this.stopTsneButton.attr('disabled', null);
     this.currentDataSet.projectTSNE(
-        this.perplexity, this.learningRate, this.dimension,
+        this.perplexity, this.learningRate, this.is3d ? 3 : 2,
         (iteration: number) => {
           if (iteration != null) {
             this.dom.select('.run-tsne-iter').text(iteration);
@@ -254,15 +240,15 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
       let x = this.pcaX - 1;
       let y = this.pcaY - 1;
       let z = this.pcaZ - 1;
-      let hasZ = this.dimension === 3;
 
       this.projector.setProjection(
           'pca',
           // Accessors.
           i => this.currentDataSet.points[i].projections['pca-' + x],
           i => this.currentDataSet.points[i].projections['pca-' + y],
-          hasZ ? (i => this.currentDataSet.points[i].projections['pca-' + z]) :
-                 null,
+          this.is3d ?
+              (i => this.currentDataSet.points[i].projections['pca-' + z]) :
+              null,
           // Axis labels.
           'pca-' + x, 'pca-' + y);
     });
