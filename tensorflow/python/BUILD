@@ -40,6 +40,7 @@ py_library(
         ":summary",
         ":training",
         "//tensorflow/contrib:contrib_py",
+        "//tensorflow/python/debug:debug_py",
     ],
 )
 
@@ -1417,7 +1418,7 @@ cuda_py_test(
 
 cuda_py_test(
     name = "gradient_checker_test",
-    size = "small",
+    size = "medium",
     srcs = ["ops/gradient_checker_test.py"],
     additional_deps = [
         ":array_ops",
@@ -2145,6 +2146,33 @@ py_binary(
     deps = [
         ":docs",
         "//tensorflow:tensorflow_py",
+    ],
+)
+
+# -----------------------------------------------------------------------------
+# Quantization
+
+py_test(
+    name = "dequantize_op_test",
+    size = "small",
+    srcs = ["ops/dequantize_op_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":ops",
+        "//tensorflow:tensorflow_py",
+        "//tensorflow/python:framework_test_lib",
+    ],
+)
+
+py_test(
+    name = "quantized_conv_ops_test",
+    size = "small",
+    srcs = ["ops/quantized_conv_ops_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":ops",
+        "//tensorflow:tensorflow_py",
+        "//tensorflow/python:framework_test_lib",
     ],
 )
 
