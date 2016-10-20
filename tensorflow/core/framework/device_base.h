@@ -93,8 +93,6 @@ typedef std::vector<DeviceContext*> DeviceContextMap;
 class DeviceBase {
  public:
   explicit DeviceBase(Env* env) : env_(env) {}
-  explicit DeviceBase(Env* env, const DeviceAttributes& device_attributes)
-      : device_attributes_(device_attributes), env_(env) {}
   virtual ~DeviceBase();
 
   Env* env() const { return env_; }
@@ -183,7 +181,8 @@ class DeviceBase {
 
   virtual const DeviceAttributes& attributes() const {
     LOG(FATAL) << "Device does not implement attributes()";
-    return device_attributes_;
+    static DeviceAttributes dummy;
+    return dummy;
   }
 
   // Materializes the given TensorProto into 'tensor' stored in Device
@@ -199,10 +198,7 @@ class DeviceBase {
     return errors::Internal("Device does not implement MakeTensorFromProto()");
   }
 
-protected:
-  const DeviceAttributes device_attributes_;
-
-private:
+ private:
   Env* const env_;
   CpuWorkerThreads* cpu_worker_threads_ = nullptr;
   GpuDeviceInfo* gpu_device_info_ = nullptr;
